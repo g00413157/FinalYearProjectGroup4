@@ -1,0 +1,44 @@
+/* Navbar nav-link base style */
+.navbar .nav-link {
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+  transition: color 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Icon transition */
+.navbar .nav-link svg {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+/* Active text styling */
+.navbar .nav-link.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Scale up icon when active */
+.navbar .nav-link.active svg {
+  transform: scale(1.3); /* grows 30% when active */
+  color: #f4a261; /* optional: match underline accent */
+}
+
+/* Underline base style */
+.navbar .nav-link .nav-underline {
+  position: absolute;
+  bottom: 0.2rem;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 60%;
+  height: 2px;
+  background-color: #f4a261;
+  transform-origin: center;
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Animate underline when active */
+.navbar .nav-link.active .nav-underline {
+  transform: translateX(-50%) scaleX(1);
+}
