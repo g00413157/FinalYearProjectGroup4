@@ -2,7 +2,7 @@ import './App.css'
 import Closet from './components/Closet'
 import Shop from './components/Shop'
 import Home from './components/Home'
-import Account from './components/Account'
+import Account from './components/Account/Account'
 import NavigationBar from './components/NavigationBar'
 import { Routes, Route } from 'react-router-dom'
 
