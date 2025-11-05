@@ -1,23 +1,28 @@
-import './App.css'
-import Closet from './components/Closet'
-import Shop from './components/Shop'
-import Home from './components/Home'
-import Account from './components/Account/Account'
-import NavigationBar from './components/NavigationBar'
-import { Routes, Route } from 'react-router-dom'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AuthProvider } from './context/AuthContext';
+
+import NavigationBar from './components/NavigationBar';
+import Home from './components/Home';
+import Shop from './components/Shop';
+import Closet from './components/Closet';
+import AccountWrapper from './components/Account/AccountWrapper';
 
 function App() {
   return (
-    <>
-      <NavigationBar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/closet" element={<Closet />} />
-        <Route path="/account" element={<Account />} />
-      </Routes>
-    </>
-  )
+    <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+      <AuthProvider>
+          <NavigationBar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/closet" element={<Closet />} />
+            <Route path="/account" element={<AccountWrapper />} />
+          </Routes>
+      </AuthProvider>
+    </GoogleOAuthProvider>
+  );
 }
 
-export default App
+export default App;

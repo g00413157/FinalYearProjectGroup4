@@ -4,11 +4,10 @@ import AccountInfo from './AccountInfo';
 import { Button } from 'react-bootstrap';
 import '../../styles/Account.css';
 
-function Account() {
+export default function Account() {
   const [editMode, setEditMode] = useState(false);
 
   const handleSave = () => {
-    // TODO: Save logic
     alert('Information saved!');
     setEditMode(false);
   };
@@ -20,11 +19,7 @@ function Account() {
 
       {editMode && (
         <div className="save-btn-container">
-          <Button
-            variant="dark"
-            size="lg"
-            onClick={handleSave}
-          >
+          <Button variant="dark" size="lg" onClick={handleSave}>
             Save Information
           </Button>
         </div>
@@ -32,5 +27,3 @@ function Account() {
     </div>
   );
 }
-
-export default Account;
