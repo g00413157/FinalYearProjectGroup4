@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import * as jwt_decode from 'jwt-decode';
 import '../../styles/Account.css';
 
-export default function Login() {
+export default function LogIn() {
   const { login } = useContext(AuthContext);
 
   const handleLoginSuccess = (credentialResponse) => {
