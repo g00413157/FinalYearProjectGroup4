@@ -3,7 +3,7 @@ import { ListGroup } from 'react-bootstrap';
 
 function SettingsList() {
   return (
-    <ListGroup>
+    <ListGroup className="settings-list p-3">
       <ListGroup.Item action>Notifications</ListGroup.Item>
       <ListGroup.Item action>Privacy Settings</ListGroup.Item>
       <ListGroup.Item action className="text-danger">Log Out</ListGroup.Item>

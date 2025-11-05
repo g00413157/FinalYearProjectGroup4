@@ -1,7 +1,62 @@
-.profile-header, .account-options, .settings-list {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 12px;
+.account-page {
+    min-height: 100vh;
+    padding-bottom: 70px; /* space for bottom navbar */
+    background-color: #f8f9fa; /* light background */
+    color: #212529;
   }
+  
+  .profile-header {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  
+
+/* Pencil circle */
+.edit-icon-circle {
+    background-color: #000; /* black background */
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.5s ease-in-out;
+  }
+  
+  .edit-icon-circle.rotate-pencil {
+    transform: rotate(180deg) scale(1.1) ;
+  }
+
+  /* Smooth color transition for the svg icon */
+.edit-icon-circle svg {
+    transition: color 0.5s ease-in-out;
+  }
+  
+  
+  .account-info {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    margin-top: 12px;
+  }
+  
+  .form-control[disabled] {
+    background-color: #e9ecef;
+    color: #495057;
+  }
+
+
+
+  /* Make sure save button has space above navbar */
+  .save-btn-container {
+    position: fixed;
+    bottom: 150px; /* above bottom navbar */
+
+    width: 90%;
+    max-width: 400px;
+    z-index: 1000;
+  }
+  
   
