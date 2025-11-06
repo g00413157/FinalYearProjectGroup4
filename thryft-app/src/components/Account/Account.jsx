@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import ProfileHeader from './ProfileHeader';
 import AccountInfo from './AccountInfo';
 import { Button } from 'react-bootstrap';
 import '../../styles/Account.css';
+import SettingsList from './SettingsList';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function Account() {
   const [editMode, setEditMode] = useState(false);
+  const { user } = useContext(AuthContext); // ✅ get user from context
 
   const handleSave = () => {
     alert('Information saved!');
@@ -14,8 +17,13 @@ export default function Account() {
 
   return (
     <div className="account-page p-3 pb-5">
-      <ProfileHeader editMode={editMode} setEditMode={setEditMode} />
-      <AccountInfo editMode={editMode} />
+      <ProfileHeader
+        editMode={editMode}
+        setEditMode={setEditMode}
+        user={user} // ✅ pass user down
+      />
+
+      <AccountInfo editMode={editMode} user={user} /> {/* ✅ pass user */}
 
       {editMode && (
         <div className="save-btn-container">
@@ -24,6 +32,8 @@ export default function Account() {
           </Button>
         </div>
       )}
+
+      <SettingsList />
     </div>
   );
 }

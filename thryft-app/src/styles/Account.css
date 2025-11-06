@@ -59,4 +59,34 @@
     z-index: 1000;
   }
   
+  .account-box {
+    width: 100%;
+    max-width: 380px;
+    background: #fff;
+  }
+  
+  .divider {
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: #888;
+    position: relative;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #ccc;
+  }
+  
+  .divider::before {
+    left: 0;
+  }
+  
+  .divider::after {
+    right: 0;
+  }
   

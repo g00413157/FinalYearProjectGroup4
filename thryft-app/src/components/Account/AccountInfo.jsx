@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form } from 'react-bootstrap';
 
-function AccountInfo({ editMode }) {
+function AccountInfo({ editMode, user }) {
   const [dob, setDob] = useState('');
   const [location, setLocation] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  // Load data from Google user
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+    }
+  }, [user]);
 
   return (
     <div className="account-info p-3">
@@ -12,7 +22,8 @@ function AccountInfo({ editMode }) {
           <Form.Label>Name</Form.Label>
           <Form.Control
             type="text"
-            placeholder="Your Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             disabled={!editMode}
           />
         </Form.Group>
@@ -21,7 +32,8 @@ function AccountInfo({ editMode }) {
           <Form.Label>Email</Form.Label>
           <Form.Control
             type="email"
-            placeholder="email@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             disabled={!editMode}
           />
         </Form.Group>
