@@ -1,56 +1,202 @@
-import React, { useState } from "react";
-import ClosetSection from "./ClosetSection";
-import AddItemModal from "./AddItemModal";
+import React, { useState, useRef } from "react";
+import { Card, Button, Modal, Form } from "react-bootstrap";
 import "../../styles/Closet.css";
 
 export default function Closet() {
   const [showModal, setShowModal] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", category: "Tops", image: "" });
 
-  // Sample static data (will be replaced with DB later)
-  const closetData = {
-    Tops: [
-      { id: 1, name: "White T-Shirt", image: "/images/white-tshirt.jpg" },
-      { id: 2, name: "Denim Jacket", image: "/images/denim-jacket.jpg" },
-      { id: 3, name: "Graphic Tee", image: "/images/graphic-tee.jpg" },
-      { id: 4, name: "Sweatshirt", image: "/images/sweatshirt.jpg" },
-      { id: 5, name: "Crop Top", image: "/images/crop-top.jpg" },
-    ],
-    Bottoms: [
-      { id: 6, name: "Blue Jeans", image: "/images/blue-jeans.jpg" },
-      { id: 7, name: "Black Skirt", image: "/images/black-skirt.jpg" },
-      { id: 8, name: "Joggers", image: "/images/joggers.jpg" },
-      { id: 9, name: "Denim Shorts", image: "/images/denim-shorts.jpg" },
-      { id: 10, name: "Cargo Pants", image: "/images/cargo-pants.jpg" },
-    ],
-    Shoes: [
-      { id: 11, name: "Converse Sneakers", image: "/images/converse.jpg" },
-      { id: 12, name: "Leather Boots", image: "/images/boots.jpg" },
-      { id: 13, name: "Running Shoes", image: "/images/running-shoes.jpg" },
-      { id: 14, name: "Slides", image: "/images/slides.jpg" },
-      { id: 15, name: "Heels", image: "/images/heels.jpg" },
-    ],
-    Accessories: [
-      { id: 16, name: "Gold Necklace", image: "/images/necklace.jpg" },
-      { id: 17, name: "Bucket Hat", image: "/images/hat.jpg" },
-      { id: 18, name: "Sunglasses", image: "/images/sunglasses.jpg" },
-      { id: 19, name: "Watch", image: "/images/watch.jpg" },
-      { id: 20, name: "Scarf", image: "/images/scarf.jpg" },
-    ],
+  const categories = [
+    {
+      title: "Tops",
+      items: [
+        { name: "Denim Jacket", image: "https://via.placeholder.com/200" },
+        { name: "White T-Shirt", image: "https://via.placeholder.com/200" },
+        { name: "Hoodie", image: "https://via.placeholder.com/200" },
+        { name: "Blouse", image: "https://via.placeholder.com/200" },
+        { name: "Tank Top", image: "https://via.placeholder.com/200" },
+      ],
+    },
+    {
+      title: "Bottoms",
+      items: [
+        { name: "Jeans", image: "https://via.placeholder.com/200" },
+        { name: "Skirt", image: "https://via.placeholder.com/200" },
+        { name: "Joggers", image: "https://via.placeholder.com/200" },
+        { name: "Shorts", image: "https://via.placeholder.com/200" },
+        { name: "Trousers", image: "https://via.placeholder.com/200" },
+      ],
+    },
+    {
+      title: "Shoes",
+      items: [
+        { name: "Sneakers", image: "https://via.placeholder.com/200" },
+        { name: "Boots", image: "https://via.placeholder.com/200" },
+        { name: "Heels", image: "https://via.placeholder.com/200" },
+        { name: "Sandals", image: "https://via.placeholder.com/200" },
+        { name: "Loafers", image: "https://via.placeholder.com/200" },
+      ],
+    },
+    {
+      title: "Accessories",
+      items: [
+        { name: "Watch", image: "https://via.placeholder.com/200" },
+        { name: "Hat", image: "https://via.placeholder.com/200" },
+        { name: "Scarf", image: "https://via.placeholder.com/200" },
+        { name: "Belt", image: "https://via.placeholder.com/200" },
+        { name: "Sunglasses", image: "https://via.placeholder.com/200" },
+      ],
+    },
+  ];
+
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    console.log("New item:", newItem);
+    setShowModal(false);
+    setNewItem({ name: "", category: "Tops", image: "" });
+  };
+
+  // Function to handle dragging
+  const useDraggableScroll = (ref) => {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    const handleMouseDown = (e) => {
+      isDown = true;
+      ref.current.classList.add("active");
+      startX = e.pageX - ref.current.offsetLeft;
+      scrollLeft = ref.current.scrollLeft;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+      ref.current.classList.remove("active");
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      ref.current.classList.remove("active");
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - ref.current.offsetLeft;
+      const walk = (x - startX) * 1.5; // scroll speed
+      ref.current.scrollLeft = scrollLeft - walk;
+    };
+
+    return { handleMouseDown, handleMouseLeave, handleMouseUp, handleMouseMove };
   };
 
   return (
-    <div className="closet-page">
-      <h1 className="closet-title">My Closet</h1>
-
-      {Object.entries(closetData).map(([category, items]) => (
-        <ClosetSection key={category} category={category} items={items} />
-      ))}
-
-      <button className="add-item-btn" onClick={() => setShowModal(true)}>
-        + Add New Item
-      </button>
-
-      {showModal && <AddItemModal onClose={() => setShowModal(false)} />}
+<>
+    {/* Top Header */}
+    <div className="closet-header">
+      <h1>My Closet</h1>
     </div>
-  );
+    <div className="closet-page container mt-4 mb-5">
+      {categories.map((category, index) => {
+        const scrollRef = useRef(null);
+        const dragHandlers = useDraggableScroll(scrollRef);
+
+        return (
+          <div key={index} className="category-section mb-4">
+            <h4 className="category-title">{category.title}</h4>
+            <div
+              className="scroll-container"
+              ref={scrollRef}
+              onMouseDown={dragHandlers.handleMouseDown}
+              onMouseLeave={dragHandlers.handleMouseLeave}
+              onMouseUp={dragHandlers.handleMouseUp}
+              onMouseMove={dragHandlers.handleMouseMove}
+            >
+              {category.items.map((item, idx) => (
+                <Card key={idx} className="closet-card">
+                  <Card.Img variant="top" src={item.image} />
+                  <Card.Body>
+                    <Card.Title>{item.name}</Card.Title>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+
+            {index !== categories.length - 1 && (
+              <div className="divider-line"></div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add Item Button */}
+      <div className="add-item-container">
+        <Button
+          variant="dark"
+          className="add-item-btn"
+          onClick={() => setShowModal(true)}
+        >
+          + Add New Item
+        </Button>
+      </div>
+
+      {/* Add Item Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Closet Item</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleAddItem}>
+            <Form.Group className="mb-3">
+              <Form.Label>Item Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter item name"
+                value={newItem.name}
+                onChange={(e) =>
+                  setNewItem({ ...newItem, name: e.target.value })
+                }
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Category</Form.Label>
+              <Form.Select
+                value={newItem.category}
+                onChange={(e) =>
+                  setNewItem({ ...newItem, category: e.target.value })
+                }
+              >
+                <option>Tops</option>
+                <option>Bottoms</option>
+                <option>Shoes</option>
+                <option>Accessories</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Upload Image</Form.Label>
+              <Form.Control
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  setNewItem({ ...newItem, image: e.target.files[0] })
+                }
+              />
+            </Form.Group>
+
+            <div className="d-flex justify-content-end">
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="dark" className="ms-2">
+                Add Item
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    </div>
+  </>);
 }

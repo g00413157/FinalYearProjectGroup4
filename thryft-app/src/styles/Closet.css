@@ -1,51 +1,109 @@
-.closet-section {
-    margin-bottom: 1.5rem;
-    padding: 0 10px;
+.closet-page {
+    padding-bottom: 120px; /* extra space above navbar */
   }
   
-  .closet-category {
-    font-size: 1.3rem;
-    margin-bottom: 0.6rem;
-    font-weight: 500;
-  }
-  
-  /* Override slick carousel defaults */
-  .slick-slide {
-    padding: 0 5px;
-  }
-  
-  .slick-track {
-    display: flex;
-  }
-  
-  .closet-item-card {
-    background: white;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s ease;
-  }
-  
-  .closet-item-card:hover {
-    transform: scale(1.03);
-  }
-  
-  .closet-item-card img {
+
+  /* Top header bar */
+.closet-header {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 120px;
-    object-fit: cover;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    height: 60px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
   }
   
-  .closet-item-card p {
-    margin: 6px 0;
-    font-size: 0.9rem;
+  .closet-header h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
   }
   
-  /* Optional: Hide slick arrows if not using them */
-  .slick-prev,
-  .slick-next {
-    display: none !important;
+  /* Add top spacing so content isn’t hidden behind header */
+  .closet-page {
+    padding-top: 80px; /* ensures items appear below the header */
+    padding-bottom: 120px; /* space above navbar */
+  }
+  
+  /* Category titles */
+  .category-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  
+  /* Scrollable area */
+  .scroll-container {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    gap: 1rem;
+    cursor: grab;
+    padding-bottom: 10px;
+  
+    /* hide scrollbar - cross browser */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+  
+  .scroll-container.active {
+    cursor: grabbing;
+  }
+  
+  /* Closet item cards */
+  .closet-card {
+    flex: 0 0 30%; /* Show ~3 cards at a time */
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    min-width: 200px;
+    max-width: 200px;
+  }
+  
+  .closet-card:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Divider between sections */
+  .divider-line {
+    border-bottom: 1px solid #ddd;
+    margin: 20px 0;
+  }
+  
+  /* Add Item Button */
+  .add-item-container {
+    position: fixed;
+    bottom: 110px; /* raised higher above navbar */
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .add-item-btn {
+    border-radius: 50px;
+    padding: 14px 28px;
+    font-size: 1rem;
+    background-color: #222;
+    border: none;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+  }
+  
+  .add-item-btn:hover {
+    background-color: #444;
+    transform: translateY(-2px);
   }
   
