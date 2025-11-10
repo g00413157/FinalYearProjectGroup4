@@ -1,7 +1,7 @@
 import React from 'react';
 import { Nav, Navbar, Container } from 'react-bootstrap';
 import { NavLink, useLocation } from 'react-router-dom';
-import { GiShoppingBag, GiClothes } from 'react-icons/gi';
+import { GiShoppingBag, GiClothes, GiGameConsole } from 'react-icons/gi';
 import { BsHouseFill, BsPersonCircle } from 'react-icons/bs';
 import '../styles/NavigationBar.css';
 
@@ -38,6 +38,16 @@ function NavigationBar() {
           >
             <GiShoppingBag size={getIconSize('/shop')} className="mb-1" />
             <span className="small">Shop</span>
+            <div className="nav-underline"></div>
+          </Nav.Link>
+
+          <Nav.Link
+            as={NavLink}
+            to="/game"
+            className={`d-flex flex-column align-items-center ${getActiveClass('/game')}`}
+          >
+            <GiGameConsole size={getIconSize('/game')} className="mb-1" />
+            <span className="small">Game</span>
             <div className="nav-underline"></div>
           </Nav.Link>
 

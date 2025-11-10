@@ -9,6 +9,7 @@ import "slick-carousel/slick/slick-theme.css";
 import NavigationBar from './components/NavigationBar';
 import Home from './components/Home';
 import Shop from './components/Shop';
+import Game from './components/Game/Game';
 import Closet from './components/Closet/Closet';
 import AccountWrapper from './components/Account/AccountWrapper';
 
@@ -20,6 +21,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/game" element={<Game />} />
             <Route path="/closet" element={<Closet />} />
             <Route path="/account" element={<AccountWrapper />} />
           </Routes>

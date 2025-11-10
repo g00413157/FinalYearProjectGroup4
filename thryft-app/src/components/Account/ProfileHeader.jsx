@@ -35,7 +35,7 @@ function ProfileHeader({ editMode, setEditMode }) {
         className={`edit-icon-circle ${editMode ? 'rotate-pencil' : ''}`}
         onClick={handleEditClick}
       >
-        <FaPencilAlt size={16} color={editMode ? '#f4a261' : 'white'} />
+        <FaPencilAlt size={16} color={editMode ? '#ffc107' : 'white'} />
       </div>
     </div>
   );

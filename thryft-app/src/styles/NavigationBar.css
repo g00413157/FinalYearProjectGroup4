@@ -21,7 +21,7 @@
   
   /* Active icon with scale and bounce */
   .navbar .nav-link.active svg {
-    color: #f4a261; /* optional accent color */
+    color: #ffc107; /* optional accent color */
     animation: bounceIcon 0.6s forwards;
   }
   
@@ -46,7 +46,7 @@
     transform: translateX(-50%) scaleX(0);
     width: 60%;
     height: 2px;
-    background-color: #f4a261;
+    background-color: #ffc107;
     transform-origin: center;
     transition: transform 0.3s ease-in-out;
   }
