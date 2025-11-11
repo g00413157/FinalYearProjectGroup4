@@ -1,0 +1,20 @@
+.splash-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #fff; /* or your brand color */
+    animation: fadeIn 1.2s ease-in;
+  }
+  
+  .splash-logo {
+    width: 180px;
+    opacity: 0;
+    animation: logoFade 2s ease forwards;
+  }
+  
+  @keyframes logoFade {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  

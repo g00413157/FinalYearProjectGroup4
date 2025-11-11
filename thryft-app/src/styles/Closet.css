@@ -83,7 +83,7 @@
   /* Add Item Button */
   .add-item-container {
     position: fixed;
-    bottom: 110px; /* raised higher above navbar */
+    bottom: 150px; /* raised higher above navbar */
     left: 0;
     width: 100%;
     display: flex;

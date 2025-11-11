@@ -5,9 +5,9 @@ import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
 import '../../styles/Account.css';
 
-export default function LogIn() {
+export default function LogIn({ setIsAuthenticated }) {
   const { login } = useContext(AuthContext);
-  const navigate = useNavigate(); // ✅ for redirecting after login
+  const navigate = useNavigate();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
@@ -16,52 +16,47 @@ export default function LogIn() {
     confirmPassword: '',
   });
 
-  // Handle Google login success
+  // ✅ Handle Google login success
   const handleLoginSuccess = (credentialResponse) => {
     try {
-      
       const user = jwtDecode(credentialResponse.credential);
 
-      // Save in AuthContext
+      // Save user in AuthContext and localStorage
       login(user);
-  
-      // Save Google user in localStorage for ProfileHeader fallback
       localStorage.setItem(
-        'googleUser',
+        'user',
         JSON.stringify({
           name: user.name,
           email: user.email,
           picture: user.picture,
         })
       );
-  
+
       console.log('Google user:', user);
-  
-      // Redirect after short delay to ensure context updates
-      setTimeout(() => navigate('/account'), 100);
+
+      // Update state + redirect to home
+      setIsAuthenticated(true);
+      setTimeout(() => navigate('/'), 100);
     } catch (error) {
       console.error('Error decoding Google credential:', error);
     }
   };
-  
 
-  // Handle form input
+  // ✅ Handle form input
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle email/password form submission
+  // ✅ Handle email/password form submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (isSignUp) {
-      // Sign up logic
       if (formData.password !== formData.confirmPassword) {
         alert('Passwords do not match');
         return;
       }
 
-      // Placeholder for signup API
       const newUser = {
         name: formData.email,
         email: formData.email,
@@ -69,11 +64,11 @@ export default function LogIn() {
       };
 
       login(newUser);
-      localStorage.setItem('googleUser', JSON.stringify(newUser));
-      navigate('/account');
+      localStorage.setItem('user', JSON.stringify(newUser));
+      setIsAuthenticated(true);
+      navigate('/');
       console.log('Signed up with:', formData);
     } else {
-      // Login logic
       const existingUser = {
         name: formData.email,
         email: formData.email,
@@ -81,8 +76,9 @@ export default function LogIn() {
       };
 
       login(existingUser);
-      localStorage.setItem('googleUser', JSON.stringify(existingUser));
-      navigate('/account');
+      localStorage.setItem('user', JSON.stringify(existingUser));
+      setIsAuthenticated(true);
+      navigate('/');
       console.log('Logged in with:', formData);
     }
   };
