@@ -12,16 +12,21 @@ function AccountInfo({ editMode, user }) {
     const loadProfile = async () => {
       if (!user) return;
 
-      // If Firestore has profile data, load it
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
 
       if (snap.exists()) {
-        const data = snap.data().profile || {};
-        setName(data.name || user.displayName || "");
-        setLocation(data.location || "");
+        const data = snap.data();
+
+        setName(
+          data.name || user.displayName || ""
+        );
+
+        setLocation(
+          data.location || ""
+        );
       } else {
-        // No profile yet → fallback values
+        // No Firestore profile exists yet
         setName(user.displayName || "");
         setLocation("");
       }

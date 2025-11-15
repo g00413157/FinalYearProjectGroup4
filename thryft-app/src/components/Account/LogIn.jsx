@@ -3,10 +3,8 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../firebase";
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { Form } from "react-bootstrap";
 
 import "../../styles/Account.css";
 
@@ -16,21 +14,20 @@ export default function LogIn() {
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
-  // 🔥 Redirect user AWAY from /login if already logged in
+  // Redirect away from login if already logged in
   useEffect(() => {
-    if (currentUser) {
-      navigate("/");
-    }
+    if (currentUser) navigate("/");
   }, [currentUser, navigate]);
 
-  // ===========================
-  // 🌟 1. HANDLE GOOGLE LOGIN
-  // ===========================
+  // ===============================
+  // 🌟 GOOGLE LOGIN HANDLER
+  // ===============================
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const cred = GoogleAuthProvider.credential(
@@ -38,26 +35,24 @@ export default function LogIn() {
       );
 
       const result = await signInWithCredential(auth, cred);
-
       console.log("Google Auth User:", result.user);
 
-      // 🔥 Redirect to home after Google login
       navigate("/");
     } catch (err) {
       console.error("Google login error:", err);
     }
   };
 
-  // ===========================
-  // 🌟 2. HANDLE INPUT CHANGE
-  // ===========================
+  // ===============================
+  // 🌟 HANDLE FORM INPUT
+  // ===============================
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ===========================
-  // 🌟 3. SUBMIT FORM (Email/Password)
-  // ===========================
+  // ===============================
+  // 🌟 SUBMIT HANDLER
+  // ===============================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -68,16 +63,15 @@ export default function LogIn() {
           return;
         }
 
-        // Firebase Signup
-        await register(formData.email, formData.password);
-        console.log("Signed up with:", formData.email);
+        // SIGN UP with NAME
+        await register(formData.email, formData.password, formData.name);
+        console.log("Signed up:", formData.email);
       } else {
-        // Firebase Login
+        // LOG IN
         await login(formData.email, formData.password);
-        console.log("Logged in with:", formData.email);
+        console.log("Logged in:", formData.email);
       }
 
-      // 🔥 Redirect after login/signup
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -88,12 +82,29 @@ export default function LogIn() {
   return (
     <div className="login-page d-flex flex-column align-items-center justify-content-center vh-100">
       <div className="account-box p-4 shadow rounded text-center">
+
         <h2 className="mb-4">
           {isSignUp ? "Create an Account" : "Sign in to Thryft"}
         </h2>
 
         {/* Email / Password Form */}
         <form onSubmit={handleSubmit} className="w-100" style={{ maxWidth: "320px" }}>
+
+          {/* NAME FIELD (Sign up only) */}
+          {isSignUp && (
+            <Form.Group className="mb-3 text-start">
+              <Form.Label>Name</Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                placeholder="Enter your name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+            </Form.Group>
+          )}
+
           <div className="form-group mb-3 text-start">
             <label>Email</label>
             <input
@@ -118,6 +129,7 @@ export default function LogIn() {
             />
           </div>
 
+          {/* CONFIRM PASSWORD (Sign up only) */}
           {isSignUp && (
             <div className="form-group mb-3 text-start">
               <label>Confirm Password</label>
@@ -147,8 +159,7 @@ export default function LogIn() {
           />
         </div>
 
-
-        {/* Toggle between modes */}
+        {/* SWITCH Login / Sign up */}
         <p className="mt-4">
           {isSignUp ? (
             <>
