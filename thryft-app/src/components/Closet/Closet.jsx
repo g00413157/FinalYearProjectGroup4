@@ -1,132 +1,109 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, Button, Modal, Form } from "react-bootstrap";
 import "../../styles/Closet.css";
 import { db, storage } from "../../firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Closet() {
+  const { currentUser } = useAuth();
+
+  // --------------------------------------------
+  // STATE
+  // --------------------------------------------
   const [showModal, setShowModal] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", category: "Tops", image: null });
+
   const [categories, setCategories] = useState([
-    { title: "Tops", items: [] },
-    { title: "Bottoms", items: [] },
-    { title: "Shoes", items: [] },
-    { title: "Accessories", items: [] },
+    "Accessories",
+    "Bottoms",
+    "Shoes",
+    "Tops",
   ]);
 
-  // ✅ Fetch items from Firestore on mount
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+
+  const [items, setItems] = useState([]);
+
+  const [newItem, setNewItem] = useState({
+    name: "",
+    category: "Tops",
+    image: null,
+  });
+
+  // Each category gets a ref stored here
+  const scrollRefs = useRef({});
+
+  // --------------------------------------------
+  // REAL-TIME FETCH USER'S CLOSET
+  // --------------------------------------------
   useEffect(() => {
-    const fetchItems = async () => {
-      const snapshot = await getDocs(collection(db, "closetItems"));
-      const items = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
+    if (!currentUser) return;
+
+    const closetRef = collection(db, "users", currentUser.uid, "closet");
+
+    const unsubscribe = onSnapshot(closetRef, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
       }));
 
-      const grouped = ["Tops", "Bottoms", "Shoes", "Accessories"].map((cat) => ({
-        title: cat,
-        items: items.filter((item) => item.item_category === cat),
-      }));
+      setItems(data);
 
-      setCategories(grouped);
-    };
+      // Build dynamic categories (default + new)
+      const allCats = Array.from(
+        new Set([...categories, ...data.map((i) => i.category)])
+      ).sort();
 
-    fetchItems();
-  }, []);
+      setCategories(allCats);
 
-  // ✅ Add new item
-  const handleAddItem = async (e) => {
-    e.preventDefault();
-    try {
-      let imageUrl = "";
-
-      // Upload image if a file was selected
-      if (newItem.image instanceof File) {
-        const storageRef = ref(storage, `closetImages/${Date.now()}_${newItem.image.name}`);
-        await uploadBytes(storageRef, newItem.image);
-        imageUrl = await getDownloadURL(storageRef);
-      }
-
-      // Add item to Firestore
-      await addDoc(collection(db, "closetItems"), {
-        item_name: newItem.name,
-        item_category: newItem.category,
-        image_url: imageUrl || "",
-        item_type: "",
-        item_colour: "",
+      // Ensure each category has a scrollRef
+      allCats.forEach((cat) => {
+        if (!scrollRefs.current[cat]) {
+          scrollRefs.current[cat] = React.createRef();
+        }
       });
+    });
 
-      // Reset modal and form
-      setShowModal(false);
-      setNewItem({ name: "", category: "Tops", image: null });
+    return unsubscribe;
+  }, [currentUser]);
 
-      // Refresh items
-      const snapshot = await getDocs(collection(db, "closetItems"));
-      const items = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
-      const grouped = ["Tops", "Bottoms", "Shoes", "Accessories"].map((cat) => ({
-        title: cat,
-        items: items.filter((item) => item.item_category === cat),
-      }));
-      setCategories(grouped);
-    } catch (error) {
-      console.error("Error adding item:", error);
-    }
-  };
-
-  // ✅ Delete item (Firestore + Storage)
-  const handleDeleteItem = async (itemId, imageUrl) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
-
-    try {
-      // Delete Firestore document
-      await deleteDoc(doc(db, "closetItems", itemId));
-
-      // Delete image from Storage (if exists)
-      if (imageUrl) {
-        const imageRef = ref(storage, imageUrl);
-        await deleteObject(imageRef);
-      }
-
-      // Refresh items
-      const snapshot = await getDocs(collection(db, "closetItems"));
-      const items = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
-      const grouped = ["Tops", "Bottoms", "Shoes", "Accessories"].map((cat) => ({
-        title: cat,
-        items: items.filter((item) => item.item_category === cat),
-      }));
-      setCategories(grouped);
-    } catch (error) {
-      console.error("Error deleting item:", error);
-    }
-  };
-
-  // ✅ Draggable scroll helper
-  const useDraggableScroll = (ref) => {
+  // --------------------------------------------
+  // DRAG SCROLL HANDLERS  (SAFE OUTSIDE LOOP)
+  // --------------------------------------------
+  const createDragHandlers = (ref) => {
     let isDown = false;
     let startX, scrollLeft;
 
-    const handleMouseDown = (e) => {
+    const onMouseDown = (e) => {
       isDown = true;
       ref.current.classList.add("active");
       startX = e.pageX - ref.current.offsetLeft;
       scrollLeft = ref.current.scrollLeft;
     };
-    const handleMouseLeave = () => {
+
+    const onMouseLeave = () => {
       isDown = false;
       ref.current.classList.remove("active");
     };
-    const handleMouseUp = () => {
+
+    const onMouseUp = () => {
       isDown = false;
       ref.current.classList.remove("active");
     };
-    const handleMouseMove = (e) => {
+
+    const onMouseMove = (e) => {
       if (!isDown) return;
       e.preventDefault();
       const x = e.pageX - ref.current.offsetLeft;
@@ -134,58 +111,152 @@ export default function Closet() {
       ref.current.scrollLeft = scrollLeft - walk;
     };
 
-    return { handleMouseDown, handleMouseLeave, handleMouseUp, handleMouseMove };
+    return { onMouseDown, onMouseLeave, onMouseUp, onMouseMove };
   };
 
+  // --------------------------------------------
+  // DELETE ITEM
+  // --------------------------------------------
+  const handleDeleteItem = async (item) => {
+    if (!currentUser) return;
+
+    if (!window.confirm("Delete this item?")) return;
+
+    await deleteDoc(doc(db, "users", currentUser.uid, "closet", item.id));
+
+    if (item.storagePath) {
+      const imageRef = ref(storage, item.storagePath);
+      await deleteObject(imageRef);
+    }
+  };
+
+  // --------------------------------------------
+  // ADD ITEM
+  // --------------------------------------------
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    let imageUrl = "";
+    let storagePath = "";
+
+    if (newItem.image instanceof File) {
+      const path = `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`;
+      const storageRef = ref(storage, path);
+
+      await uploadBytes(storageRef, newItem.image);
+      imageUrl = await getDownloadURL(storageRef);
+      storagePath = path;
+    }
+
+    await addDoc(collection(db, "users", currentUser.uid, "closet"), {
+      name: newItem.name,
+      category: newItem.category,
+      imageUrl,
+      storagePath,
+      createdAt: Date.now(),
+    });
+
+    setShowModal(false);
+    setNewItem({ name: "", category: "Tops", image: null });
+    setCustomCategoryInput("");
+  };
+
+  // --------------------------------------------
+  // ADD NEW CATEGORY
+  // --------------------------------------------
+  const handleAddCategory = () => {
+    if (!customCategoryInput.trim()) return;
+    if (categories.includes(customCategoryInput)) return;
+
+    const updated = [...categories, customCategoryInput].sort();
+    setCategories(updated);
+
+    // set new item to this category
+    setNewItem((prev) => ({
+      ...prev,
+      category: customCategoryInput,
+    }));
+
+    setCustomCategoryInput("");
+
+    // create scroll ref for this category
+    scrollRefs.current[customCategoryInput] = React.createRef();
+  };
+
+  // --------------------------------------------
+  // UI RENDER
+  // --------------------------------------------
   return (
     <>
-      <div className="closet-header">
-        <h1>My Closet</h1>
+      <div className="closet-appbar">
+        <h1 className="closet-appbar-title">My Closet</h1>
       </div>
 
+
       <div className="closet-page container mt-4 mb-5">
+
         {categories.map((category, index) => {
-          const scrollRef = useRef(null);
-          const dragHandlers = useDraggableScroll(scrollRef);
+          const categoryItems = items.filter(
+            (item) => item.category === category
+          );
+
+          if (categoryItems.length === 0) return null;
+
+          const ref = scrollRefs.current[category];
+          const drag = createDragHandlers(ref);
 
           return (
-            <div key={index} className="category-section mb-4">
-              <h4 className="category-title">{category.title}</h4>
+            <div key={category} className="category-section mb-4">
+
+              <h4 className="category-title">{category}</h4>
+
               <div
                 className="scroll-container"
-                ref={scrollRef}
-                onMouseDown={dragHandlers.handleMouseDown}
-                onMouseLeave={dragHandlers.handleMouseLeave}
-                onMouseUp={dragHandlers.handleMouseUp}
-                onMouseMove={dragHandlers.handleMouseMove}
+                ref={ref}
+                onMouseDown={drag.onMouseDown}
+                onMouseLeave={drag.onMouseLeave}
+                onMouseUp={drag.onMouseUp}
+                onMouseMove={drag.onMouseMove}
               >
-                {category.items.map((item, idx) => (
-                  <Card key={idx} className="closet-card">
+                {categoryItems.map((item) => (
+                  <Card key={item.id} className="closet-card">
+
+                    <div
+                      className="delete-x"
+                      onClick={() => handleDeleteItem(item)}
+                    >
+                      ×
+                    </div>
+
                     <Card.Img
                       variant="top"
-                      src={item.image_url || "https://via.placeholder.com/200"}
+                      src={item.imageUrl || "https://via.placeholder.com/200"}
+                      className="closet-card-img"
                     />
+
                     <Card.Body>
-                      <Card.Title>{item.item_name}</Card.Title>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => handleDeleteItem(item.id, item.image_url)}
-                      >
-                        Delete
-                      </Button>
+                      <Card.Title>{item.name}</Card.Title>
                     </Card.Body>
+
                   </Card>
                 ))}
               </div>
-              {index !== categories.length - 1 && <div className="divider-line"></div>}
+
+              {index !== categories.length - 1 && (
+                <div className="divider-line"></div>
+              )}
             </div>
           );
         })}
 
         {/* Add Item Button */}
         <div className="add-item-container">
-          <Button variant="dark" className="add-item-btn" onClick={() => setShowModal(true)}>
+          <Button
+            variant="dark"
+            className="add-item-btn"
+            onClick={() => setShowModal(true)}
+          >
             + Add New Item
           </Button>
         </div>
@@ -195,41 +266,69 @@ export default function Closet() {
           <Modal.Header closeButton>
             <Modal.Title>Add New Closet Item</Modal.Title>
           </Modal.Header>
+
           <Modal.Body>
             <Form onSubmit={handleAddItem}>
+
+              {/* ADD NEW CATEGORY — NOW AT TOP */}
+              <div className="custom-category-box mb-3">
+                <Form.Label>Add New Category</Form.Label>
+
+                <div className="custom-cat-row">
+                  <Form.Control
+                    type="text"
+                    placeholder="New category"
+                    value={customCategoryInput}
+                    onChange={(e) => setCustomCategoryInput(e.target.value)}
+                  />
+                  <Button variant="dark" onClick={handleAddCategory}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* ITEM NAME */}
               <Form.Group className="mb-3">
                 <Form.Label>Item Name</Form.Label>
                 <Form.Control
                   type="text"
                   placeholder="Enter item name"
                   value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, name: e.target.value })
+                  }
                   required
                 />
               </Form.Group>
 
+              {/* ITEM CATEGORY DROPDOWN */}
               <Form.Group className="mb-3">
                 <Form.Label>Category</Form.Label>
                 <Form.Select
                   value={newItem.category}
-                  onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, category: e.target.value })
+                  }
                 >
-                  <option>Tops</option>
-                  <option>Bottoms</option>
-                  <option>Shoes</option>
-                  <option>Accessories</option>
+                  {categories.map((cat) => (
+                    <option key={cat}>{cat}</option>
+                  ))}
                 </Form.Select>
               </Form.Group>
 
+              {/* IMAGE UPLOAD */}
               <Form.Group className="mb-3">
                 <Form.Label>Upload Image</Form.Label>
                 <Form.Control
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setNewItem({ ...newItem, image: e.target.files[0] })}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, image: e.target.files[0] })
+                  }
                 />
               </Form.Group>
 
+              {/* BUTTONS */}
               <div className="d-flex justify-content-end">
                 <Button variant="secondary" onClick={() => setShowModal(false)}>
                   Cancel
@@ -238,10 +337,13 @@ export default function Closet() {
                   Add Item
                 </Button>
               </div>
+
             </Form>
           </Modal.Body>
         </Modal>
-      </div>
+
+
+      </div >
     </>
   );
 }

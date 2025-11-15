@@ -1,113 +1,197 @@
+/* =========================================
+   GENERAL PAGE LAYOUT
+========================================= */
+
 .closet-page {
-  height: 100%;
-  min-height: 100vh;
-  overflow-y: auto;
-  padding-bottom: 2rem;
+  padding-bottom: 100px; /* so no overlap with bottom buttons */
 }
 
-  
+/* =========================================
+   CATEGORY TITLES + SECTION SPACING
+========================================= */
 
-  /* Top header bar */
-.closet-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background-color: #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1001;
-  }
-  
-  .closet-header h1 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #222;
-    margin: 0;
-  }
-  
-  /* Add top spacing so content isn’t hidden behind header */
-  .closet-page {
-    padding-top: 80px; /* ensures items appear below the header */
-    padding-bottom: 120px; /* space above navbar */
-  }
-  
-  /* Category titles */
-  .category-title {
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: #333;
-  }
-  
-  /* Scrollable area */
-  .scroll-container {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-behavior: smooth;
-    gap: 1rem;
-    cursor: grab;
-    padding-bottom: 10px;
-  
-    /* hide scrollbar - cross browser */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE 10+ */
-  }
-  .scroll-container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
-  }
-  
-  .scroll-container.active {
-    cursor: grabbing;
-  }
-  
-  /* Closet item cards */
-  .closet-card {
-    flex: 0 0 30%; /* Show ~3 cards at a time */
-    border-radius: 10px;
-    overflow: hidden;
-    transition: transform 0.3s ease;
-    min-width: 200px;
-    max-width: 200px;
-  }
-  
-  .closet-card:hover {
-    transform: scale(1.05);
-  }
-  
-  /* Divider between sections */
-  .divider-line {
-    border-bottom: 1px solid #ddd;
-    margin: 20px 0;
-  }
-  
-  /* Add Item Button */
-  .add-item-container {
-    position: fixed;
-    bottom: 150px; /* raised higher above navbar */
-    left: 0;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    z-index: 1000;
-  }
-  
-  .add-item-btn {
-    border-radius: 50px;
-    padding: 14px 28px;
-    font-size: 1rem;
-    background-color: #222;
-    border: none;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-    transition: all 0.2s ease;
-  }
-  
-  .add-item-btn:hover {
-    background-color: #444;
-    transform: translateY(-2px);
-  }
-  
+.category-section {
+  margin-bottom: 45px; /* more breathing room */
+}
+
+.category-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 14px; /* increased space between title & cards */
+  margin-left: 5px;
+  color: #333;
+}
+
+
+/* APP BAR / HEADER */
+.closet-appbar {
+  width: 100%;
+  padding: 18px 22px;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  position: sticky;  /* sticks to top when scrolling */
+  top: 0;
+  z-index: 50;
+}
+
+.closet-appbar-title {
+  font-size: 26px;
+  color: #333;
+  margin: 0;
+  text-align: center;
+}
+
+/* Divider line between sections */
+.divider-line {
+  height: 1px;
+  background: #ddd;
+  margin: 25px 0;
+}
+
+/* =========================================
+   DRAGGABLE HORIZONTAL SCROLL
+========================================= */
+
+.scroll-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  padding-bottom: 10px;
+  cursor: grab;
+  padding-top: 2px;
+  padding-bottom: 14px;
+
+  -webkit-overflow-scrolling: touch;   /* iOS momentum scrolling */
+  scroll-behavior: smooth;             /* smooth feel */
+}
+
+
+
+.scroll-container.active {
+  cursor: grabbing;
+}
+
+.scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================================
+   CLOSET ITEM CARDS
+========================================= */
+
+.closet-card {
+  width: 160px;
+  min-width: 160px;
+  flex: 0 0 auto;     /* THIS FIXES THE SCROLLING */
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+
+.closet-card-img {
+  width: 100%;
+  height: 180px;        /* consistent size */
+  object-fit: cover;    /* prevents stretching */
+  border-radius: 12px 12px 0 0;
+}
+
+.closet-card .card-body {
+  padding: 10px;
+  text-align: center;
+}
+
+.closet-card .card-title {
+  font-size: 15px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* =========================================
+   DELETE "X" RED CIRCLE BUTTON
+========================================= */
+
+.delete-x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  background: #e63946; /* red circle */
+  color: white;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 20;
+  user-select: none;
+}
+
+.delete-x:hover {
+  background: #c52834;
+}
+
+/* =========================================
+   ADD ITEM BUTTON
+========================================= */
+
+.add-item-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.add-item-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+/* =========================================
+   MODAL – ADD ITEM
+========================================= */
+
+.custom-category-box {
+  margin-bottom: 20px;
+}
+
+.custom-cat-row input {
+  flex: 1;
+}
+
+.custom-cat-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.category-title {
+  letter-spacing: 0.3px; /* tiny aesthetic touch */
+}
+
+
+/* =========================================
+   EXTRA AESTHETIC TOUCHES
+========================================= */
+
+/* Smooth transitions */
+.closet-card,
+.delete-x {
+  transition: 0.15s ease;
+}
+
+.closet-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+
+
