@@ -7,8 +7,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        thryftGreen: "#2e7d32",
-        thryftPink: "#f7c4d9",
+        thryftGreen: "#437C90",
+        thryftPink: "#F7C548",
       },
     },
   },

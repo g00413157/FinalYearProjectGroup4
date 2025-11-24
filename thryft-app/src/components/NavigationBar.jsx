@@ -17,7 +17,8 @@ function NavigationBar() {
   };
 
   return (
-    <Navbar bg="dark" variant="dark" fixed="bottom">
+    <Navbar className="custom-navbar" variant="dark" fixed="bottom">
+
       <Container className="justify-content-around text-center">
         <Nav className="w-100 justify-content-around">
 
