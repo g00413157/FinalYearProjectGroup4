@@ -2,13 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
 import { db, storage } from "../../firebase";
+import "../../styles/Closet.css";
+
 import {
   collection,
   addDoc,
   onSnapshot,
   deleteDoc,
+  updateDoc,
   doc,
-  updateDoc
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import {
   ref,
@@ -19,191 +23,254 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-import { Shirt, Inbox, ShoppingBag, Gem, FolderPlus, Star } from "lucide-react";
+// Lucide icons
+import {
+  Shirt,
+  Inbox,
+  ShoppingBag,
+  Gem,
+  Star,
+  Heart,
+  Sparkles,
+  Layers,
+  PlusCircle,
+  FolderPlus,
+  Trash,
+  Edit,
+  Tag,
+} from "lucide-react";
 
+// ---------------------------------------------------------
+//  CONSTANTS
+// ---------------------------------------------------------
+
+// Saved outfit tag options:
 const TAG_OPTIONS = [
-  "Streetwear",
-  "Minimalist",
-  "Cozy",
-  "Chic",
-  "Y2K",
+  "Casual",
+  "Formal",
+  "Summer",
+  "Winter",
+  "Travel",
   "Sporty",
-  "Dark Academia",
-  "Festival",
-  "Work",
-  "Boho",
-  "Edgy",
-  "Preppy",
+  "Night Out",
+  "Comfy",
 ];
+
+// 1) Pastel swatches
+const COLOR_SWATCHES = [
+  "#FFB7C5",
+  "#C4B5FD",
+  "#A5F3FC",
+  "#FDE68A",
+  "#D1FAE5",
+  "#FBCFE8",
+  "#E5E7EB",
+];
+
+// Lucide options
+const LUCIDE_ICON_OPTIONS = [
+  { name: "Shirt", icon: <Shirt size={16} /> },
+  { name: "Inbox", icon: <Inbox size={16} /> },
+  { name: "ShoppingBag", icon: <ShoppingBag size={16} /> },
+  { name: "Gem", icon: <Gem size={16} /> },
+  { name: "Heart", icon: <Heart size={16} /> },
+  { name: "Sparkles", icon: <Sparkles size={16} /> },
+  { name: "Layers", icon: <Layers size={16} /> },
+];
+
+// helper
+const getLucideIcon = (name, size = 16) => {
+  const IconMap = {
+    Shirt: <Shirt size={size} />,
+    Inbox: <Inbox size={size} />,
+    ShoppingBag: <ShoppingBag size={size} />,
+    Gem: <Gem size={size} />,
+    Heart: <Heart size={size} />,
+    Sparkles: <Sparkles size={size} />,
+    Layers: <Layers size={size} />,
+  };
+  return IconMap[name] || null;
+};
+
+// ---------------------------------------------------------
+//  MAIN
+// ---------------------------------------------------------
 
 export default function Closet() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // UI states
-  const [showModal, setShowModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedOutfit, setSelectedOutfit] = useState(null);
-  const [renameValue, setRenameValue] = useState("");
-
+  // UI State
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-
   const [sortMode, setSortMode] = useState("Newest");
   const [tagFilter, setTagFilter] = useState("All");
 
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-
-  // NEW: custom categories
-  const [customCategoryInput, setCustomCategoryInput] = useState("");
-  const [dynamicCategories, setDynamicCategories] = useState([]);
-
-  // BASE categories
-  // Base categories (except Saved Outfits, which we will place manually at end)
-  const baseCategories = [
-    "All",
-    "Tops",
-    "Bottoms",
-    "Shoes",
-    "Accessories",
-  ];
-
-  // Always pinned at the end
-  const SPECIAL_CATEGORY = "Saved Outfits";
-
-  // Merge base + dynamic (custom) categories
-  let merged = [...baseCategories, ...dynamicCategories];
-
-  // Sort alphabetically BUT keep "All" at the top
-  merged = merged
-    .filter(cat => cat !== "All")
-    .sort((a, b) => a.localeCompare(b));
-
-  merged = ["All", ...merged];
-
-  // Add "Saved Outfits" at the very END
-  const categories = [...merged, SPECIAL_CATEGORY];
-
-
-  const categoryIcons = {
-    All: <FolderPlus size={16} />,
-    Tops: <Shirt size={16} />,
-    Bottoms: <Inbox size={16} />,
-    Shoes: <ShoppingBag size={16} />,
-    Accessories: <Gem size={16} />,
-    "Saved Outfits": <Star size={16} className="text-yellow-500" />,
-  };
-
-  // Firestore data
-  const [items, setItems] = useState([]);
-  const [outfits, setOutfits] = useState([]);
-
-  // Add Item form
   const [newItem, setNewItem] = useState({
     name: "",
     category: "Tops",
     image: null,
   });
 
-  // Fetch closet items
+
+  // Outfit state
+  const [selectedOutfit, setSelectedOutfit] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [newTagValue, setNewTagValue] = useState("");
+
+  // Category modals
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+
+  // Category creation
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState(COLOR_SWATCHES[0]);
+  const [newCategoryIconType, setNewCategoryIconType] = useState("emoji");
+  const [emojiInput, setEmojiInput] = useState("");
+  const [selectedLucideIcon, setSelectedLucideIcon] = useState("");
+
+  // Delete category
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [reassignTargetCategory, setReassignTargetCategory] =
+    useState("");
+
+  // Firestore data
+  const [items, setItems] = useState([]);
+  const [outfits, setOutfits] = useState([]);
+  const [customCategories, setCustomCategories] = useState([]);
+
+  // ---------------------------------------------------------
+  //  FETCH ITEMS
+  // ---------------------------------------------------------
+
   useEffect(() => {
     if (!currentUser) return;
-
     return onSnapshot(
       collection(db, "users", currentUser.uid, "closet"),
-      (snapshot) => {
-        setItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-      }
+      (snapshot) =>
+        setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
     );
   }, [currentUser]);
 
-  // Fetch outfits
+  // fetch outfits
   useEffect(() => {
     if (!currentUser) return;
-
     return onSnapshot(
       collection(db, "users", currentUser.uid, "outfits"),
+      (snapshot) =>
+        setOutfits(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+    );
+  }, [currentUser]);
+
+  // fetch custom categories
+  useEffect(() => {
+    if (!currentUser) return;
+    return onSnapshot(
+      collection(db, "users", currentUser.uid, "customCategories"),
       (snapshot) => {
-        setOutfits(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const cats = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+        setCustomCategories(cats);
       }
     );
   }, [currentUser]);
 
-  // Add item
-  const handleAddItem = async () => {
-    if (!newItem.name || !newItem.image) return;
+  // ---------------------------------------------------------
+  //  CATEGORY SYSTEM
+  // ---------------------------------------------------------
 
-    const imgRef = ref(
-      storage,
-      `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
+  const BASE_CATEGORIES = [
+    { name: "All", icon: <FolderPlus size={16} /> },
+    { name: "Tops", icon: <Shirt size={16} /> },
+    { name: "Bottoms", icon: <Inbox size={16} /> },
+    { name: "Shoes", icon: <ShoppingBag size={16} /> },
+    { name: "Accessories", icon: <Gem size={16} /> },
+  ];
+
+  const SPECIAL_CATEGORY = {
+    name: "Saved Outfits",
+    icon: <Star size={16} className="text-yellow-500" />,
+  };
+
+  const mergedCategories = [
+    ...BASE_CATEGORIES,
+    ...customCategories
+      .map((cat) => ({
+        name: cat.name,
+        color: cat.color,
+        iconType: cat.iconType,
+        icon:
+          cat.iconType === "emoji"
+            ? cat.icon
+            : getLucideIcon(cat.icon),
+        id: cat.id,
+        isCustom: true,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  ];
+
+  const categories = [...mergedCategories, SPECIAL_CATEGORY];
+
+  // ---------------------------------------------------------
+  //  RENDER CATEGORY PILL
+  // ---------------------------------------------------------
+
+  const renderCategoryPill = (cat) => {
+    const isActive = activeCategory === cat.name;
+
+    return (
+      <button
+        key={`${cat.id || cat.name}-pill`}
+        onClick={() => setActiveCategory(cat.name)}
+        className={`category-pill whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${isActive ? "text-white active-category-glow" : "text-gray-700"
+          }`}
+        style={{
+          backgroundColor: isActive
+            ? cat.color || "#618B4A"
+            : cat.color || "#E5E7EB",
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (cat.isCustom) requestDeleteCategory(cat);
+        }}
+      >
+        {cat.iconType === "emoji" && <span className="text-lg">{cat.icon}</span>}
+        {cat.iconType === "lucide" && <span>{cat.icon}</span>}
+        {(!cat.iconType && cat.icon) && <span>{cat.icon}</span>}
+        {cat.name}
+      </button>
     );
-
-    await uploadBytes(imgRef, newItem.image);
-    const url = await getDownloadURL(imgRef);
-
-    await addDoc(collection(db, "users", currentUser.uid, "closet"), {
-      name: newItem.name,
-      category: newItem.category,
-      image: url,
-    });
-
-    setNewItem({ name: "", category: "Tops", image: null });
-    setShowModal(false);
   };
 
-  // Delete item
-  const handleDelete = async (item) => {
-    await deleteDoc(doc(db, "users", currentUser.uid, "closet", item.id));
-    await deleteObject(ref(storage, item.image));
-  };
+  // ---------------------------------------------------------
+  //  FILTERED ITEMS
+  // ---------------------------------------------------------
 
-  // Delete outfit
-  const handleDeleteOutfit = async (outfit) => {
-    await deleteDoc(doc(db, "users", currentUser.uid, "outfits", outfit.id));
-    setSelectedOutfit(null);
-  };
-
-  // Rename outfit
-  const handleRenameOutfit = async () => {
-    if (!renameValue.trim() || !selectedOutfit) return;
-
-    await updateDoc(
-      doc(db, "users", currentUser.uid, "outfits", selectedOutfit.id),
-      { name: renameValue.trim() }
-    );
-
-    setSelectedOutfit({ ...selectedOutfit, name: renameValue.trim() });
-  };
-
-  // NEW: Add Custom Category
-  const handleAddCustomCategory = () => {
-    const newCat = customCategoryInput.trim();
-    if (!newCat) return;
-
-    if (categories.includes(newCat)) {
-      alert("This category already exists.");
-      return;
-    }
-
-    setDynamicCategories((prev) => [...prev, newCat]);
-    setCustomCategoryInput("");
-  };
-
-  // FILTER ITEMS
   const filteredItems = items.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
     const matchesCategory =
       activeCategory === "All" || item.category === activeCategory;
 
     return matchesSearch && matchesCategory;
   });
 
-  // FILTER + PREVIEW OUTFITS
+  // ---------------------------------------------------------
+  //  FILTERED OUTFITS
+  // ---------------------------------------------------------
+
   let filteredOutfits = outfits.map((outfit) => {
     const previewItems = items.filter((i) =>
-      outfit.items.includes(i.id)
+      outfit.items?.includes(i.id)
     );
     return { ...outfit, previewItems };
   });
@@ -215,8 +282,10 @@ export default function Closet() {
   }
 
   filteredOutfits.sort((a, b) => {
-    if (sortMode === "Newest") return b.createdAt?.toDate() - a.createdAt?.toDate();
-    if (sortMode === "Oldest") return a.createdAt?.toDate() - b.createdAt?.toDate();
+    if (sortMode === "Newest")
+      return b.createdAt?.toDate() - a.createdAt?.toDate();
+    if (sortMode === "Oldest")
+      return a.createdAt?.toDate() - b.createdAt?.toDate();
     if (sortMode === "A-Z") return a.name.localeCompare(b.name);
     if (sortMode === "Z-A") return b.name.localeCompare(a.name);
     return 0;
@@ -224,286 +293,713 @@ export default function Closet() {
 
   const showingOutfits = activeCategory === "Saved Outfits";
 
-  return (
-    <div className="pb-32">
+  // ---------------------------------------------------------
+  // ADD CATEGORY MODAL
+  // ---------------------------------------------------------
 
-      <h1 className="text-3xl font-bold px-4 pt-6 text-gray-900 mb-4">My Closet</h1>
+  const AddCategoryModal = () => (
+    <Modal
+      show={showAddCategoryModal}
+      onHide={() => setShowAddCategoryModal(false)}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>New Category</Modal.Title>
+      </Modal.Header>
 
-      <button
-        onClick={() => navigate("/outfits")}
-        className="ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
-      >
-        Build an Outfit
-      </button>
-
-      {/* SEARCH */}
-      {!showingOutfits && (
-        <div className="px-4 mt-4">
+      <Modal.Body>
+        {/* CATEGORY NAME */}
+        <div className="mb-3">
+          <label className="font-semibold">Category Name</label>
           <input
             type="text"
-            placeholder="Search items..."
-            className="w-full px-4 py-2 rounded-lg border shadow-sm focus:ring-2 focus:ring-thryftGreen"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg"
+            placeholder="e.g., Dresses"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
           />
         </div>
-      )}
 
-      {/* CATEGORY TABS */}
-      <div className="flex gap-3 overflow-x-auto px-4 py-4 scrollbar-hide">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2
-              ${activeCategory === cat
-                ? "bg-thryftGreen text-white"
-                : "bg-gray-200 text-gray-700"
-              }`}
-          >
-            {categoryIcons[cat]}
-            {cat}
-          </button>
+        {/* ICON TYPE */}
+        <div className="mb-3">
+          <label className="font-semibold block mb-2">Icon Type</label>
 
-        ))}
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                checked={newCategoryIconType === "emoji"}
+                onChange={() => setNewCategoryIconType("emoji")}
+              />
+              Emoji
+            </label>
 
-        {/* ADD CATEGORY BUTTON */}
-        <button
-          onClick={() => setShowCategoryModal(true)}
-          className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 bg-gray-200 text-gray-700 hover:bg-gray-300"
-        >
-          <span className="text-xl leading-none">+</span>
-          Add
-        </button>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                checked={newCategoryIconType === "lucide"}
+                onChange={() => setNewCategoryIconType("lucide")}
+              />
+              Icon
+            </label>
+          </div>
+        </div>
 
-      </div>
+        {/* EMOJI PICKER */}
+        {newCategoryIconType === "emoji" && (
+          <div className="mb-4">
+            <label className="font-semibold block mb-1">Choose Emoji</label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-lg text-2xl"
+              placeholder="Tap to enter emoji"
+              value={emojiInput}
+              onChange={(e) => setEmojiInput(e.target.value)}
+            />
+          </div>
+        )}
 
-
-      {/* ================== SAVED OUTFITS ================== */}
-      {showingOutfits && (
-        <>
-          {/* SORT + FILTER */}
-          <div className="px-4 mb-4 flex justify-between items-center">
-            <div>
-              <label className="font-semibold mr-2">Sort:</label>
-              <select
-                className="border px-2 py-1 rounded"
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value)}
-              >
-                <option>Newest</option>
-                <option>Oldest</option>
-                <option>A-Z</option>
-                <option>Z-A</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="font-semibold mr-2">Tag:</label>
-              <select
-                className="border px-2 py-1 rounded"
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-              >
-                <option>All</option>
-                {TAG_OPTIONS.map((tag) => (
-                  <option key={tag}>{tag}</option>
-                ))}
-              </select>
+        {/* LUCIDE ICONS */}
+        {newCategoryIconType === "lucide" && (
+          <div className="mb-4">
+            <label className="font-semibold block mb-2">Choose Icon</label>
+            <div className="grid grid-cols-4 gap-3">
+              {LUCIDE_ICON_OPTIONS.map((iconObj) => (
+                <button
+                  type="button"
+                  key={iconObj.name}
+                  onClick={() => setSelectedLucideIcon(iconObj.name)}
+                  className={`border rounded-lg p-2 flex items-center justify-center transition ${selectedLucideIcon === iconObj.name
+                      ? "bg-thryftGreen text-white"
+                      : "bg-gray-100 hover:bg-gray-200"
+                    }`}
+                >
+                  {iconObj.icon}
+                </button>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* OUTFIT GRID */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
-            {filteredOutfits.map((outfit) => (
-              <motion.div
-                key={outfit.id}
-                layout
-                onClick={() => {
-                  setSelectedOutfit(outfit);
-                  setRenameValue(outfit.name || "");
+        {/* COLOR PICKER */}
+        <div className="mb-3">
+          <label className="font-semibold block mb-1">Color</label>
+
+          <div className="flex gap-3 mt-2 flex-wrap">
+            {COLOR_SWATCHES.map((color) => (
+              <button
+                type="button"
+                key={color}
+                onClick={() => setNewCategoryColor(color)}
+                className="w-8 h-8 rounded-full border"
+                style={{
+                  backgroundColor: color,
+                  borderColor:
+                    newCategoryColor === color ? "black" : "transparent",
+                  borderWidth: newCategoryColor === color ? 2 : 1,
                 }}
-                className="bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
-              >
-                <div className="rounded-lg overflow-hidden h-[180px] grid grid-rows-2 grid-cols-2 gap-1">
-                  <img
-                    src={outfit.previewItems[0]?.image}
-                    className="col-span-2 row-span-1 object-cover w-full h-full"
-                  />
+              />
+            ))}
+          </div>
 
-                  <img
-                    src={outfit.previewItems[1]?.image}
-                    className="object-cover w-full h-full"
-                  />
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="color"
+              className="w-10 h-10 rounded"
+              value={newCategoryColor}
+              onChange={(e) => setNewCategoryColor(e.target.value)}
+            />
+            <span>{newCategoryColor}</span>
+          </div>
+        </div>
+      </Modal.Body>
 
-                  <div className="relative">
+      <Modal.Footer>
+        <Button
+          variant="secondary"
+          onClick={() => setShowAddCategoryModal(false)}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          variant="success"
+          disabled={
+            !newCategoryName.trim() ||
+            (newCategoryIconType === "emoji" && !emojiInput.trim()) ||
+            (newCategoryIconType === "lucide" && !selectedLucideIcon)
+          }
+          onClick={async () => {
+            const icon =
+              newCategoryIconType === "emoji" ? emojiInput : selectedLucideIcon;
+
+            await addDoc(
+              collection(db, "users", currentUser.uid, "customCategories"),
+              {
+                name: newCategoryName,
+                color: newCategoryColor,
+                iconType: newCategoryIconType,
+                icon,
+              }
+            );
+
+            setNewCategoryName("");
+            setEmojiInput("");
+            setSelectedLucideIcon("");
+            setNewCategoryIconType("emoji");
+            setShowAddCategoryModal(false);
+          }}
+        >
+          Add Category
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+
+
+  // ---------------------------------------------------------
+  // DELETE CATEGORY MODAL
+  // ---------------------------------------------------------
+
+  const DeleteCategoryModal = () => (
+    <Modal
+      show={showDeleteCategoryModal}
+      onHide={() => setShowDeleteCategoryModal(false)}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Delete Category</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body>
+        {categoryToDelete && (
+          <>
+            <p className="mb-2">
+              Category: <strong>{categoryToDelete.name}</strong>
+            </p>
+            <p>
+              Contains{" "}
+              <strong>
+                {
+                  items.filter(
+                    (item) => item.category === categoryToDelete.name
+                  ).length
+                }
+              </strong>{" "}
+              items.
+            </p>
+          </>
+        )}
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button
+          variant="secondary"
+          onClick={() => setShowDeleteCategoryModal(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() => {
+            setShowDeleteCategoryModal(false);
+            setShowReassignModal(true);
+          }}
+        >
+          Continue
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+
+
+  // ---------------------------------------------------------
+  // REASSIGN ITEMS BEFORE DELETE MODAL
+  // ---------------------------------------------------------
+
+  const ReassignModal = () => (
+    <Modal
+      show={showReassignModal}
+      onHide={() => setShowReassignModal(false)}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Reassign Items</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body>
+        <p className="mb-2">Reassign items from:</p>
+        <p className="font-semibold mb-3">{categoryToDelete?.name}</p>
+
+        <Form.Select
+          value={reassignTargetCategory}
+          onChange={(e) => setReassignTargetCategory(e.target.value)}
+        >
+          <option value="">Select new category</option>
+          {categories
+            .filter(
+              (cat) =>
+                cat.name !== "Saved Outfits" &&
+                cat.name !== categoryToDelete?.name
+            )
+            .map((cat) => (
+              <option key={cat.name} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
+        </Form.Select>
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button
+          variant="secondary"
+          onClick={() => setShowReassignModal(false)}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          variant="danger"
+          disabled={!reassignTargetCategory}
+          onClick={async () => {
+            const batch = writeBatch(db);
+
+            items.forEach((item) => {
+              if (item.category === categoryToDelete.name) {
+                const refDoc = doc(
+                  db,
+                  "users",
+                  currentUser.uid,
+                  "closet",
+                  item.id
+                );
+                batch.update(refDoc, {
+                  category: reassignTargetCategory,
+                });
+              }
+            });
+
+            const catRef = doc(
+              db,
+              "users",
+              currentUser.uid,
+              "customCategories",
+              categoryToDelete.id
+            );
+
+            batch.delete(catRef);
+
+            await batch.commit();
+
+            setShowReassignModal(false);
+            setCategoryToDelete(null);
+            setReassignTargetCategory("");
+          }}
+        >
+          Confirm
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+
+  // ---------------------------------------------------------
+// ADD ITEM TO FIRESTORE
+// ---------------------------------------------------------
+const handleAddItem = async () => {
+  if (!newItem.name || !newItem.image) return;
+
+  const imgRef = ref(
+    storage,
+    `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
+  );
+
+  await uploadBytes(imgRef, newItem.image);
+  const url = await getDownloadURL(imgRef);
+
+  await addDoc(collection(db, "users", currentUser.uid, "closet"), {
+    name: newItem.name,
+    category: newItem.category,
+    image: url,
+  });
+
+  setNewItem({ name: "", category: "Tops", image: null });
+  setShowAddItemModal(false);
+};
+
+
+// ---------------------------------------------------------
+// DELETE ITEM
+// ---------------------------------------------------------
+const handleDeleteItem = async (item) => {
+  await deleteDoc(
+    doc(db, "users", currentUser.uid, "closet", item.id)
+  );
+  await deleteObject(ref(storage, item.image));
+};
+
+
+// ---------------------------------------------------------
+// REQUEST DELETE CATEGORY (step 1)
+// ---------------------------------------------------------
+const requestDeleteCategory = (cat) => {
+  setCategoryToDelete(cat);
+  setShowDeleteCategoryModal(true);
+};
+
+
+  // ---------------------------------------------------------
+  //  RETURN — FULL UI
+  // ---------------------------------------------------------
+
+  return (
+    <>
+      {/* MAIN CLOSET UI */}
+      <div className="pb-32">
+
+        {/* TITLE */}
+        <h1 className="text-3xl font-bold px-4 pt-6 text-gray-900 mb-4">
+          My Closet
+        </h1>
+
+        {/* BUILD OUTFIT BUTTON */}
+        <button
+          onClick={() => navigate("/outfits")}
+          className="ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
+        >
+          Build an Outfit
+        </button>
+
+        {/* SEARCH BAR (hidden in Saved Outfits tab) */}
+        {!showingOutfits && (
+          <div className="px-4 mt-4">
+            <input
+              type="text"
+              placeholder="Search items..."
+              className="w-full px-4 py-2 rounded-lg border shadow-sm focus:ring-2 focus:ring-thryftGreen"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* CATEGORY PILLS */}
+        <div className="flex gap-3 overflow-x-auto px-4 py-4 scrollbar-hide">
+          {categories.map((cat) => renderCategoryPill(cat))}
+
+          {/* ADD CATEGORY BUTTON */}
+          <button
+            type="button"
+            onClick={() => setShowAddCategoryModal(true)}
+            className="category-pill whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 bg-gray-200 hover:bg-gray-300"
+          >
+            <PlusCircle size={16} />
+            Add
+          </button>
+        </div>
+
+        {/* ===============================
+          SAVED OUTFITS SECTION
+        =============================== */}
+        {showingOutfits && (
+          <>
+            {/* SORT + FILTER BAR */}
+            <div className="px-4 mb-4 flex justify-between items-center">
+              <div>
+                <label className="font-semibold mr-2">Sort:</label>
+                <select
+                  className="border px-2 py-1 rounded"
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value)}
+                >
+                  <option>Newest</option>
+                  <option>Oldest</option>
+                  <option>A-Z</option>
+                  <option>Z-A</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold mr-2">Tag:</label>
+                <select
+                  className="border px-2 py-1 rounded"
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                >
+                  <option>All</option>
+                  {TAG_OPTIONS.map((tag) => (
+                    <option key={tag}>{tag}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* OUTFIT GRID */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
+              {filteredOutfits.map((outfit) => (
+                <motion.div
+                  key={outfit.id}
+                  layout
+                  onClick={() => {
+                    setSelectedOutfit(outfit);
+                    setRenameValue(outfit.name || "");
+                  }}
+                  className="bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
+                >
+                  <div className="rounded-lg overflow-hidden h-[180px] grid grid-rows-2 grid-cols-2 gap-1">
                     <img
-                      src={outfit.previewItems[2]?.image}
+                      src={outfit.previewItems[0]?.image}
+                      className="col-span-2 row-span-1 object-cover w-full h-full"
+                    />
+
+                    <img
+                      src={outfit.previewItems[1]?.image}
                       className="object-cover w-full h-full"
                     />
 
-                    {outfit.previewItems.length > 3 && (
-                      <div className="absolute inset-0 bg-black/50 text-white flex items-center justify-center text-sm font-semibold rounded">
-                        +{outfit.previewItems.length - 3} more
-                      </div>
-                    )}
+                    <div className="relative">
+                      <img
+                        src={outfit.previewItems[2]?.image}
+                        className="object-cover w-full h-full"
+                      />
+
+                      {outfit.previewItems.length > 3 && (
+                        <div className="absolute inset-0 bg-black/50 text-white flex items-center justify-center text-sm font-semibold rounded">
+                          +{outfit.previewItems.length - 3}
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  <p className="text-center mt-2 font-medium">
+                    {outfit.name || "Untitled Outfit"}
+                  </p>
+
+                  {/* TAG CHIPS */}
+                  <div className="flex flex-wrap justify-center gap-1 mt-1">
+                    {outfit.tags?.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 bg-gray-200 rounded-full text-xs"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ===============================
+          CLOSET ITEMS SECTION
+        =============================== */}
+        {!showingOutfits && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
+            {filteredItems.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-xl shadow-md p-2 flex flex-col gap-2 h-[260px] justify-between"
+              >
+                <img
+                  src={item.image}
+                  onClick={() => setSelectedItem(item)}
+                  className="cursor-pointer w-full h-[150px] object-cover rounded-lg transition-transform duration-300 md:hover:scale-110"
+                />
+
+                <div className="flex justify-between items-center">
+                  <p className="font-medium text-gray-900 truncate">
+                    {item.name}
+                  </p>
+
+                  <span className="text-xs bg-thryftGreen text-white px-2 py-1 rounded-full">
+                    {item.category}
+                  </span>
                 </div>
 
-                <p className="text-center mt-2 font-medium">
-                  {outfit.name || "Untitled Outfit"}
-                </p>
-
-                <div className="flex flex-wrap justify-center gap-1 mt-1">
-                  {outfit.tags?.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 bg-gray-200 rounded-full text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteItem(item)}
+                  className="text-xs text-red-500 mt-1"
+                >
+                  Delete
+                </button>
               </motion.div>
             ))}
           </div>
-        </>
-      )}
+        )}
 
-      {/* ================== CLOSET ITEMS ================== */}
-      {!showingOutfits && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
-          {filteredItems.map((item) => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white rounded-xl shadow-md p-2 flex flex-col gap-2 h-[260px] justify-between"
-            >
-              <img
-                src={item.image}
-                onClick={() => setSelectedItem(item)}
-                className="cursor-pointer w-full h-[150px] object-cover rounded-lg transition-transform duration-300 md:hover:scale-110"
-              />
+        {/* ADD ITEM BUTTON */}
+        {!showingOutfits && (
+          <button
+            type="button"
+            onClick={() => setShowAddItemModal(true)}
+            className="fixed bottom-[120px] right-6 bg-thryftGreen text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-4xl hover:scale-110 transition-all duration-200 z-[9999]"
+          >
+            +
+          </button>
+        )}
 
-              <div className="flex justify-between items-center">
-                <p className="font-medium text-gray-900 truncate">
-                  {item.name}
-                </p>
-
-                <span className="text-xs bg-thryftGreen text-white px-2 py-1 rounded-full">
-                  {item.category}
-                </span>
-              </div>
-
-              <button
-                onClick={() => handleDelete(item)}
-                className="text-xs text-red-500 mt-1"
-              >
-                Delete
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* FLOATING ADD BUTTON */}
-      {!showingOutfits && (
+        {/* BACK TO TOP BUTTON */}
         <button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-[120px] right-6 bg-thryftGreen text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-4xl hover:scale-110 transition-all duration-200 z-[9999]"
+          type="button"
+          onClick={() =>
+            window.scrollTo({ top: 0, behavior: "smooth" })
+          }
+          className="fixed bottom-[120px] left-6 bg-gray-800 text-white w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-xl hover:scale-110 transition z-[9999]"
         >
-          +
+          ↑
         </button>
+      </div>
+
+      {/* ---------------------------------------------------------
+        OUTFIT DETAIL MODAL
+      --------------------------------------------------------- */}
+
+      {selectedOutfit && (
+        <Modal
+          show={true}
+          onHide={() => setSelectedOutfit(null)}
+          centered
+          size="lg"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Edit Outfit</Modal.Title>
+          </Modal.Header>
+
+          <Modal.Body>
+            {/* Rename */}
+            <div className="mb-3">
+              <label className="font-semibold">Outfit Name</label>
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className="w-full border rounded px-3 py-2 mt-1"
+              />
+              <button
+                className="mt-2 px-4 py-1 bg-thryftGreen text-white rounded"
+                onClick={async () => {
+                  const refDoc = doc(
+                    db,
+                    "users",
+                    currentUser.uid,
+                    "outfits",
+                    selectedOutfit.id
+                  );
+                  await updateDoc(refDoc, { name: renameValue });
+                }}
+              >
+                Save Name
+              </button>
+            </div>
+
+            {/* TAGS */}
+            <div className="mb-3">
+              <label className="font-semibold">Tags</label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedOutfit.tags?.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 bg-gray-200 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {tag}
+                    <button
+                      onClick={async () => {
+                        const refDoc = doc(
+                          db,
+                          "users",
+                          currentUser.uid,
+                          "outfits",
+                          selectedOutfit.id
+                        );
+                        await updateDoc(refDoc, {
+                          tags: selectedOutfit.tags.filter((t) => t !== tag),
+                        });
+                      }}
+                    >
+                      <Trash size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              {/* ADD TAG */}
+              <div className="flex gap-2 mt-3">
+                <input
+                  type="text"
+                  value={newTagValue}
+                  onChange={(e) => setNewTagValue(e.target.value)}
+                  className="border rounded px-3 py-1 flex-1"
+                  placeholder="Add tag..."
+                />
+                <button
+                  className="bg-thryftGreen text-white px-4 rounded"
+                  onClick={async () => {
+                    if (!newTagValue.trim()) return;
+
+                    const newTags = [
+                      ...(selectedOutfit.tags || []),
+                      newTagValue,
+                    ];
+
+                    const refDoc = doc(
+                      db,
+                      "users",
+                      currentUser.uid,
+                      "outfits",
+                      selectedOutfit.id
+                    );
+
+                    await updateDoc(refDoc, { tags: newTags });
+                    setNewTagValue("");
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* DELETE OUTFIT */}
+            <button
+              className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+              onClick={async () => {
+                await deleteDoc(
+                  doc(
+                    db,
+                    "users",
+                    currentUser.uid,
+                    "outfits",
+                    selectedOutfit.id
+                  )
+                );
+                setSelectedOutfit(null);
+              }}
+            >
+              Delete Outfit
+            </button>
+          </Modal.Body>
+        </Modal>
       )}
 
-      {/* BACK TO TOP */}
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed bottom-[120px] left-6 bg-gray-800 text-white w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-xl hover:scale-110 transition z-[9999]"
-      >
-        ↑
-      </button>
+      {/* ---------------------------------------------------------
+        EXISTING CATEGORY + ADD ITEM MODALS
+      --------------------------------------------------------- */}
 
-      {/* ITEM DETAIL MODAL */}
-      <Modal
-        show={selectedItem !== null}
-        onHide={() => setSelectedItem(null)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{selectedItem?.name}</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <img src={selectedItem?.image} className="w-full rounded-lg mb-3" />
-          <p><strong>Category:</strong> {selectedItem?.category}</p>
-
-          <Button
-            variant="danger"
-            className="mt-3"
-            onClick={() => {
-              handleDelete(selectedItem);
-              setSelectedItem(null);
-            }}
-          >
-            Delete Item
-          </Button>
-        </Modal.Body>
-      </Modal>
-
-      {/* OUTFIT DETAIL MODAL */}
-      <Modal
-        show={selectedOutfit !== null}
-        onHide={() => setSelectedOutfit(null)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Outfit</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <div className="mb-3">
-            <label className="font-semibold">Outfit Name</label>
-            <input
-              className="w-full mt-2 px-3 py-2 border rounded-lg"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-            />
-            <button
-              onClick={handleRenameOutfit}
-              className="mt-2 px-3 py-1 bg-thryftGreen text-white rounded shadow"
-            >
-              Rename
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {selectedOutfit?.previewItems.map((item) => (
-              <div key={item.id}>
-                <img
-                  src={item.image}
-                  className="rounded-lg w-full h-32 object-cover"
-                />
-                <p className="text-center mt-1">{item.name}</p>
-              </div>
-            ))}
-          </div>
-
-          <Button
-            variant="danger"
-            className="mt-4"
-            onClick={() => handleDeleteOutfit(selectedOutfit)}
-          >
-            Delete Outfit
-          </Button>
-        </Modal.Body>
-      </Modal>
+      <AddCategoryModal />
+      <DeleteCategoryModal />
+      <ReassignModal />
 
       {/* ADD ITEM MODAL */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      <Modal
+        show={showAddItemModal}
+        onHide={() => setShowAddItemModal(false)}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Add Item</Modal.Title>
         </Modal.Header>
@@ -514,7 +1010,7 @@ export default function Closet() {
               <Form.Label>Name</Form.Label>
               <Form.Control
                 type="text"
-                value={newItem.name}
+                value={newItem?.name}
                 onChange={(e) =>
                   setNewItem({ ...newItem, name: e.target.value })
                 }
@@ -533,9 +1029,12 @@ export default function Closet() {
                 <option>Bottoms</option>
                 <option>Shoes</option>
                 <option>Accessories</option>
-                {/* dynamic categories in modal */}
-                {dynamicCategories.map((cat) => (
-                  <option key={cat}>{cat}</option>
+
+                {/* Custom Categories */}
+                {customCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
                 ))}
               </Form.Select>
             </Form.Group>
@@ -545,7 +1044,10 @@ export default function Closet() {
               <Form.Control
                 type="file"
                 onChange={(e) =>
-                  setNewItem({ ...newItem, image: e.target.files[0] })
+                  setNewItem({
+                    ...newItem,
+                    image: e.target.files[0],
+                  })
                 }
               />
             </Form.Group>
@@ -560,11 +1062,16 @@ export default function Closet() {
         </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowAddItemModal(false)}
+          >
             Cancel
           </Button>
 
           <Button
+            type="button"
             variant="success"
             disabled={!newItem.name || !newItem.image}
             onClick={handleAddItem}
@@ -573,46 +1080,6 @@ export default function Closet() {
           </Button>
         </Modal.Footer>
       </Modal>
-
-
-      {/* ADD CATEGORY MODAL */}
-      <Modal
-        show={showCategoryModal}
-        onHide={() => setShowCategoryModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>New Category</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <input
-            type="text"
-            className="w-full px-3 py-2 border rounded-lg"
-            placeholder="Enter category name"
-            value={customCategoryInput}
-            onChange={(e) => setCustomCategoryInput(e.target.value)}
-          />
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCategoryModal(false)}>
-            Cancel
-          </Button>
-
-          <Button
-            variant="success"
-            onClick={() => {
-              handleAddCustomCategory();
-              setShowCategoryModal(false);
-            }}
-            disabled={!customCategoryInput.trim()}
-          >
-            Add Category
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-    </div>
+    </>
   );
 }

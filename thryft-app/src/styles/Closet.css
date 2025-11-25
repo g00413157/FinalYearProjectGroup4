@@ -86,7 +86,7 @@
   width: 160px;
   min-width: 160px;
   flex: 0 0 auto;     /* THIS FIXES THE SCROLLING */
-  background: white;
+  background: #F7C548;
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   position: relative;
@@ -192,6 +192,44 @@
   transform: translateY(-3px);
   box-shadow: 0 4px 10px rgba(0,0,0,0.12);
 }
+
+
+
+.category-pill {
+  animation: pillPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+
+@keyframes pillPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);   /* final locked value */
+    opacity: 1;            /* stays visible */
+  }
+}
+
+/* Base pill styling (animation already applied separately) */
+.category-pill {
+  transform-origin: center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* 🌿 Smooth hover scaling */
+.category-pill:hover {
+  transform: scale(1.06);
+}
+
+ 
+
 
 
 
