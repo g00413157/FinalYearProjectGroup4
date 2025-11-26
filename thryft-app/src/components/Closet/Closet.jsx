@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { db, storage } from "../../firebase";
 import "../../styles/Closet.css";
 
@@ -13,6 +14,7 @@ import {
   doc,
   getDocs,
   writeBatch,
+  Timestamp,
 } from "firebase/firestore";
 import {
   ref,
@@ -20,8 +22,8 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
+
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 // Lucide icons
 import {
@@ -34,17 +36,18 @@ import {
   Sparkles,
   Layers,
   PlusCircle,
-  FolderPlus,
   Trash,
-  Edit,
-  Tag,
 } from "lucide-react";
+
+// NEW subcomponents
+import CategoryBar from "./CategoryBar";
+import ClosetStats from "./ClosetStats";
+import ItemCard from "./ItemCard";
 
 // ---------------------------------------------------------
 //  CONSTANTS
 // ---------------------------------------------------------
 
-// Saved outfit tag options:
 const TAG_OPTIONS = [
   "Casual",
   "Formal",
@@ -56,7 +59,6 @@ const TAG_OPTIONS = [
   "Comfy",
 ];
 
-// 1) Pastel swatches
 const COLOR_SWATCHES = [
   "#FFB7C5",
   "#C4B5FD",
@@ -67,7 +69,6 @@ const COLOR_SWATCHES = [
   "#E5E7EB",
 ];
 
-// Lucide options
 const LUCIDE_ICON_OPTIONS = [
   { name: "Shirt", icon: <Shirt size={16} /> },
   { name: "Inbox", icon: <Inbox size={16} /> },
@@ -78,7 +79,6 @@ const LUCIDE_ICON_OPTIONS = [
   { name: "Layers", icon: <Layers size={16} /> },
 ];
 
-// helper
 const getLucideIcon = (name, size = 16) => {
   const IconMap = {
     Shirt: <Shirt size={size} />,
@@ -93,7 +93,33 @@ const getLucideIcon = (name, size = 16) => {
 };
 
 // ---------------------------------------------------------
-//  MAIN
+//  SIMPLE HELPERS FOR COLOR + SEASON
+// ---------------------------------------------------------
+
+const detectColorTag = (name = "") => {
+  const lower = name.toLowerCase();
+  if (lower.includes("black")) return "Black";
+  if (lower.includes("white") || lower.includes("cream")) return "Neutral";
+  if (lower.includes("pink")) return "Pink";
+  if (lower.includes("green")) return "Green";
+  if (lower.includes("blue")) return "Blue";
+  if (lower.includes("brown") || lower.includes("beige")) return "Brown";
+  return "Mixed";
+};
+
+const inferSeasonTag = (category = "", colorTag = "") => {
+  const c = category.toLowerCase();
+  const col = colorTag.toLowerCase();
+  if (c.includes("coat") || c.includes("jumper") || c.includes("hoodie"))
+    return "Winter";
+  if (c.includes("dress") || c.includes("shorts")) return "Summer";
+  if (col === "brown" || col === "beige") return "Autumn";
+  if (col === "green" || col === "pink") return "Spring";
+  return "All Year";
+};
+
+// ---------------------------------------------------------
+//  MAIN CLOSET COMPONENT
 // ---------------------------------------------------------
 
 export default function Closet() {
@@ -105,6 +131,8 @@ export default function Closet() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortMode, setSortMode] = useState("Newest");
   const [tagFilter, setTagFilter] = useState("All");
+  const [seasonFilter, setSeasonFilter] = useState("All");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -115,11 +143,9 @@ export default function Closet() {
     image: null,
   });
 
-
   // Outfit state
   const [selectedOutfit, setSelectedOutfit] = useState(null);
   const [renameValue, setRenameValue] = useState("");
-  const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [newTagValue, setNewTagValue] = useState("");
 
   // Category modals
@@ -136,8 +162,7 @@ export default function Closet() {
 
   // Delete category
   const [categoryToDelete, setCategoryToDelete] = useState(null);
-  const [reassignTargetCategory, setReassignTargetCategory] =
-    useState("");
+  const [reassignTargetCategory, setReassignTargetCategory] = useState("");
 
   // Firestore data
   const [items, setItems] = useState([]);
@@ -150,10 +175,24 @@ export default function Closet() {
 
   useEffect(() => {
     if (!currentUser) return;
+
     return onSnapshot(
       collection(db, "users", currentUser.uid, "closet"),
-      (snapshot) =>
-        setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+      (snapshot) => {
+        const mapped = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            favorite: data.favorite ?? false,
+            timesWorn: data.timesWorn ?? 0,
+            lastWorn: data.lastWorn ?? null,
+            colorTag: data.colorTag ?? detectColorTag(data.name),
+            seasonTag: data.seasonTag ?? inferSeasonTag(data.category, detectColorTag(data.name)),
+          };
+        });
+        setItems(mapped);
+      }
     );
   }, [currentUser]);
 
@@ -187,7 +226,7 @@ export default function Closet() {
   // ---------------------------------------------------------
 
   const BASE_CATEGORIES = [
-    { name: "All", icon: <FolderPlus size={16} /> },
+    { name: "All", icon: <Layers size={16} /> },
     { name: "Tops", icon: <Shirt size={16} /> },
     { name: "Bottoms", icon: <Inbox size={16} /> },
     { name: "Shoes", icon: <ShoppingBag size={16} /> },
@@ -218,60 +257,36 @@ export default function Closet() {
 
   const categories = [...mergedCategories, SPECIAL_CATEGORY];
 
-  // ---------------------------------------------------------
-  //  RENDER CATEGORY PILL
-  // ---------------------------------------------------------
-
-  const renderCategoryPill = (cat) => {
-    const isActive = activeCategory === cat.name;
-
-    return (
-      <button
-        key={`${cat.id || cat.name}-pill`}
-        onClick={() => setActiveCategory(cat.name)}
-        className={`category-pill whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${isActive ? "text-white active-category-glow" : "text-gray-700"
-          }`}
-        style={{
-          backgroundColor: isActive
-            ? cat.color || "#618B4A"
-            : cat.color || "#E5E7EB",
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          if (cat.isCustom) requestDeleteCategory(cat);
-        }}
-      >
-        {cat.iconType === "emoji" && <span className="text-lg">{cat.icon}</span>}
-        {cat.iconType === "lucide" && <span>{cat.icon}</span>}
-        {(!cat.iconType && cat.icon) && <span>{cat.icon}</span>}
-        {cat.name}
-      </button>
-    );
-  };
+  const showingOutfits = activeCategory === "Saved Outfits";
 
   // ---------------------------------------------------------
-  //  FILTERED ITEMS
+  //  FAVORITES + FILTERED ITEMS
   // ---------------------------------------------------------
 
-  const filteredItems = items.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchesSearch = item.name
+        ?.toLowerCase()
+        .includes(search.toLowerCase());
 
-    const matchesCategory =
-      activeCategory === "All" || item.category === activeCategory;
+      const matchesCategory =
+        activeCategory === "All" || item.category === activeCategory;
 
-    return matchesSearch && matchesCategory;
-  });
+      const matchesFavorite = !showFavoritesOnly || item.favorite;
+
+      const matchesSeason =
+        seasonFilter === "All" || item.seasonTag === seasonFilter;
+
+      return matchesSearch && matchesCategory && matchesFavorite && matchesSeason;
+    });
+  }, [items, search, activeCategory, showFavoritesOnly, seasonFilter]);
 
   // ---------------------------------------------------------
   //  FILTERED OUTFITS
   // ---------------------------------------------------------
 
   let filteredOutfits = outfits.map((outfit) => {
-    const previewItems = items.filter((i) =>
-      outfit.items?.includes(i.id)
-    );
+    const previewItems = items.filter((i) => outfit.items?.includes(i.id));
     return { ...outfit, previewItems };
   });
 
@@ -286,15 +301,143 @@ export default function Closet() {
       return b.createdAt?.toDate() - a.createdAt?.toDate();
     if (sortMode === "Oldest")
       return a.createdAt?.toDate() - b.createdAt?.toDate();
-    if (sortMode === "A-Z") return a.name.localeCompare(b.name);
-    if (sortMode === "Z-A") return b.name.localeCompare(a.name);
+    if (sortMode === "A-Z") return (a.name || "").localeCompare(b.name || "");
+    if (sortMode === "Z-A") return (b.name || "").localeCompare(a.name || "");
     return 0;
   });
 
-  const showingOutfits = activeCategory === "Saved Outfits";
+  // ---------------------------------------------------------
+  //  RECENTLY WORN + STATS
+  // ---------------------------------------------------------
+
+  const recentlyWornItems = useMemo(() => {
+    return items
+      .filter((i) => i.lastWorn)
+      .sort(
+        (a, b) =>
+          b.lastWorn?.toMillis?.() - a.lastWorn?.toMillis?.()
+      )
+      .slice(0, 10);
+  }, [items]);
+
+  const stats = useMemo(() => {
+    const total = items.length;
+    const favorites = items.filter((i) => i.favorite).length;
+
+    const wornThisMonth = items.filter((i) => {
+      if (!i.lastWorn) return false;
+      const d = i.lastWorn.toDate ? i.lastWorn.toDate() : new Date(i.lastWorn);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const categoryCounts = {};
+    items.forEach((i) => {
+      categoryCounts[i.category] = (categoryCounts[i.category] || 0) + 1;
+    });
+    let mostUsedCategory = null;
+    let maxCount = 0;
+    Object.entries(categoryCounts).forEach(([cat, count]) => {
+      if (count > maxCount) {
+        mostUsedCategory = cat;
+        maxCount = count;
+      }
+    });
+
+    const colorSet = new Set(items.map((i) => i.colorTag));
+    const colorTags = Array.from(colorSet).filter(Boolean);
+
+    return {
+      totalItems: total,
+      favorites,
+      wornThisMonth,
+      mostUsedCategory,
+      colorTags,
+    };
+  }, [items]);
 
   // ---------------------------------------------------------
-  // ADD CATEGORY MODAL
+  //  FIRESTORE ACTIONS
+  // ---------------------------------------------------------
+
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.image || !currentUser) return;
+
+    const imgRef = ref(
+      storage,
+      `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
+    );
+
+    await uploadBytes(imgRef, newItem.image);
+    const url = await getDownloadURL(imgRef);
+
+    const colorTag = detectColorTag(newItem.name);
+    const seasonTag = inferSeasonTag(newItem.category, colorTag);
+
+    await addDoc(collection(db, "users", currentUser.uid, "closet"), {
+      name: newItem.name,
+      category: newItem.category,
+      image: url,
+      favorite: false,
+      timesWorn: 0,
+      lastWorn: null,
+      colorTag,
+      seasonTag,
+      createdAt: Timestamp.now(),
+    });
+
+    setNewItem({ name: "", category: "Tops", image: null });
+    setShowAddItemModal(false);
+  };
+
+  const handleDeleteItem = async (item) => {
+    if (!currentUser) return;
+    await deleteDoc(
+      doc(db, "users", currentUser.uid, "closet", item.id)
+    );
+    if (item.image) {
+      try {
+        await deleteObject(ref(storage, item.image));
+      } catch (e) {
+        console.warn("Image already deleted / missing", e);
+      }
+    }
+  };
+
+  const toggleFavorite = async (item) => {
+    if (!currentUser) return;
+    const refDoc = doc(
+      db,
+      "users",
+      currentUser.uid,
+      "closet",
+      item.id
+    );
+    await updateDoc(refDoc, { favorite: !item.favorite });
+  };
+
+  const markItemWorn = async (item) => {
+    if (!currentUser) return;
+    const refDoc = doc(
+      db,
+      "users",
+      currentUser.uid,
+      "closet",
+      item.id
+    );
+    await updateDoc(refDoc, {
+      timesWorn: (item.timesWorn || 0) + 1,
+      lastWorn: Timestamp.now(),
+    });
+  };
+
+  const requestDeleteCategory = (cat) => {
+    setCategoryToDelete(cat);
+    setShowDeleteCategoryModal(true);
+  };
+
+  // ---------------------------------------------------------
+  //  CATEGORY MODALS (reuse your existing logic)
   // ---------------------------------------------------------
 
   const AddCategoryModal = () => (
@@ -369,10 +512,11 @@ export default function Closet() {
                   type="button"
                   key={iconObj.name}
                   onClick={() => setSelectedLucideIcon(iconObj.name)}
-                  className={`border rounded-lg p-2 flex items-center justify-center transition ${selectedLucideIcon === iconObj.name
+                  className={`border rounded-lg p-2 flex items-center justify-center transition ${
+                    selectedLucideIcon === iconObj.name
                       ? "bg-thryftGreen text-white"
                       : "bg-gray-100 hover:bg-gray-200"
-                    }`}
+                  }`}
                 >
                   {iconObj.icon}
                 </button>
@@ -456,11 +600,6 @@ export default function Closet() {
     </Modal>
   );
 
-
-  // ---------------------------------------------------------
-  // DELETE CATEGORY MODAL
-  // ---------------------------------------------------------
-
   const DeleteCategoryModal = () => (
     <Modal
       show={showDeleteCategoryModal}
@@ -511,11 +650,6 @@ export default function Closet() {
       </Modal.Footer>
     </Modal>
   );
-
-
-  // ---------------------------------------------------------
-  // REASSIGN ITEMS BEFORE DELETE MODAL
-  // ---------------------------------------------------------
 
   const ReassignModal = () => (
     <Modal
@@ -603,73 +737,32 @@ export default function Closet() {
   );
 
   // ---------------------------------------------------------
-// ADD ITEM TO FIRESTORE
-// ---------------------------------------------------------
-const handleAddItem = async () => {
-  if (!newItem.name || !newItem.image) return;
-
-  const imgRef = ref(
-    storage,
-    `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
-  );
-
-  await uploadBytes(imgRef, newItem.image);
-  const url = await getDownloadURL(imgRef);
-
-  await addDoc(collection(db, "users", currentUser.uid, "closet"), {
-    name: newItem.name,
-    category: newItem.category,
-    image: url,
-  });
-
-  setNewItem({ name: "", category: "Tops", image: null });
-  setShowAddItemModal(false);
-};
-
-
-// ---------------------------------------------------------
-// DELETE ITEM
-// ---------------------------------------------------------
-const handleDeleteItem = async (item) => {
-  await deleteDoc(
-    doc(db, "users", currentUser.uid, "closet", item.id)
-  );
-  await deleteObject(ref(storage, item.image));
-};
-
-
-// ---------------------------------------------------------
-// REQUEST DELETE CATEGORY (step 1)
-// ---------------------------------------------------------
-const requestDeleteCategory = (cat) => {
-  setCategoryToDelete(cat);
-  setShowDeleteCategoryModal(true);
-};
-
-
-  // ---------------------------------------------------------
   //  RETURN — FULL UI
   // ---------------------------------------------------------
 
   return (
     <>
-      {/* MAIN CLOSET UI */}
-      <div className="pb-32">
-
+      <div className="closet-page pb-32">
         {/* TITLE */}
-        <h1 className="text-3xl font-bold px-4 pt-6 text-gray-900 mb-4">
+        <h1 className="closet-title text-3xl font-bold px-4 pt-6 text-gray-900 mb-2">
           My Closet
         </h1>
+        <p className="closet-subtitle px-4 mb-4">
+          Curate your wardrobe like a magazine spread.
+        </p>
 
         {/* BUILD OUTFIT BUTTON */}
         <button
           onClick={() => navigate("/outfits")}
-          className="ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
+          className="closet-build-btn ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
         >
           Build an Outfit
         </button>
 
-        {/* SEARCH BAR (hidden in Saved Outfits tab) */}
+        {/* STATS */}
+        <ClosetStats stats={stats} />
+
+        {/* SEARCH (not in Saved Outfits) */}
         {!showingOutfits && (
           <div className="px-4 mt-4">
             <input
@@ -682,27 +775,26 @@ const requestDeleteCategory = (cat) => {
           </div>
         )}
 
-        {/* CATEGORY PILLS */}
-        <div className="flex gap-3 overflow-x-auto px-4 py-4 scrollbar-hide">
-          {categories.map((cat) => renderCategoryPill(cat))}
+        {/* CATEGORY + FILTER BAR */}
+        <div className="section-divider">Categories</div>
 
-          {/* ADD CATEGORY BUTTON */}
-          <button
-            type="button"
-            onClick={() => setShowAddCategoryModal(true)}
-            className="category-pill whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 bg-gray-200 hover:bg-gray-300"
-          >
-            <PlusCircle size={16} />
-            Add
-          </button>
-        </div>
+        <CategoryBar
+          categories={categories}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          showFavoritesOnly={showFavoritesOnly}
+          setShowFavoritesOnly={setShowFavoritesOnly}
+          seasonFilter={seasonFilter}
+          setSeasonFilter={setSeasonFilter}
+          onAddCategory={() => setShowAddCategoryModal(true)}
+          onRequestDeleteCategory={requestDeleteCategory}
+        />
 
         {/* ===============================
-          SAVED OUTFITS SECTION
+            SAVED OUTFITS
         =============================== */}
         {showingOutfits && (
           <>
-            {/* SORT + FILTER BAR */}
             <div className="px-4 mb-4 flex justify-between items-center">
               <div>
                 <label className="font-semibold mr-2">Sort:</label>
@@ -733,7 +825,8 @@ const requestDeleteCategory = (cat) => {
               </div>
             </div>
 
-            {/* OUTFIT GRID */}
+            <div className="section-divider">Saved Looks</div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
               {filteredOutfits.map((outfit) => (
                 <motion.div
@@ -743,25 +836,22 @@ const requestDeleteCategory = (cat) => {
                     setSelectedOutfit(outfit);
                     setRenameValue(outfit.name || "");
                   }}
-                  className="bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
+                  className="closet-outfit-card editorial-card bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
                 >
                   <div className="rounded-lg overflow-hidden h-[180px] grid grid-rows-2 grid-cols-2 gap-1">
                     <img
                       src={outfit.previewItems[0]?.image}
                       className="col-span-2 row-span-1 object-cover w-full h-full"
                     />
-
                     <img
                       src={outfit.previewItems[1]?.image}
                       className="object-cover w-full h-full"
                     />
-
                     <div className="relative">
                       <img
                         src={outfit.previewItems[2]?.image}
                         className="object-cover w-full h-full"
                       />
-
                       {outfit.previewItems.length > 3 && (
                         <div className="absolute inset-0 bg-black/50 text-white flex items-center justify-center text-sm font-semibold rounded">
                           +{outfit.previewItems.length - 3}
@@ -774,7 +864,6 @@ const requestDeleteCategory = (cat) => {
                     {outfit.name || "Untitled Outfit"}
                   </p>
 
-                  {/* TAG CHIPS */}
                   <div className="flex flex-wrap justify-center gap-1 mt-1">
                     {outfit.tags?.map((tag) => (
                       <span
@@ -792,43 +881,48 @@ const requestDeleteCategory = (cat) => {
         )}
 
         {/* ===============================
-          CLOSET ITEMS SECTION
+            RECENTLY WORN STRIP
         =============================== */}
+        {!showingOutfits && recentlyWornItems.length > 0 && (
+          <>
+            <div className="section-divider">Recently Worn</div>
+            <div className="px-4 mb-2 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-3">
+                {recentlyWornItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-w-[120px] flex-shrink-0 editorial-card polaroid"
+                  >
+                    <img
+                      src={item.image}
+                      className="w-full h-[90px] object-cover rounded-lg"
+                    />
+                    <div className="polaroid-label text-xs mt-1">
+                      {item.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ===============================
+            CLOSET ITEMS
+        =============================== */}
+        <div className="section-divider">Your Wardrobe</div>
+
         {!showingOutfits && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
             {filteredItems.map((item) => (
-              <motion.div
+              <ItemCard
                 key={item.id}
-                layout
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-xl shadow-md p-2 flex flex-col gap-2 h-[260px] justify-between"
-              >
-                <img
-                  src={item.image}
-                  onClick={() => setSelectedItem(item)}
-                  className="cursor-pointer w-full h-[150px] object-cover rounded-lg transition-transform duration-300 md:hover:scale-110"
-                />
-
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-gray-900 truncate">
-                    {item.name}
-                  </p>
-
-                  <span className="text-xs bg-thryftGreen text-white px-2 py-1 rounded-full">
-                    {item.category}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteItem(item)}
-                  className="text-xs text-red-500 mt-1"
-                >
-                  Delete
-                </button>
-              </motion.div>
+                item={item}
+                onImageClick={() => setSelectedItem(item)}
+                onDelete={() => handleDeleteItem(item)}
+                onToggleFavorite={() => toggleFavorite(item)}
+                onMarkWorn={() => markItemWorn(item)}
+              />
             ))}
           </div>
         )}
@@ -856,10 +950,7 @@ const requestDeleteCategory = (cat) => {
         </button>
       </div>
 
-      {/* ---------------------------------------------------------
-        OUTFIT DETAIL MODAL
-      --------------------------------------------------------- */}
-
+      {/* OUTFIT DETAIL MODAL (unchanged, just reused) */}
       {selectedOutfit && (
         <Modal
           show={true}
@@ -986,10 +1077,7 @@ const requestDeleteCategory = (cat) => {
         </Modal>
       )}
 
-      {/* ---------------------------------------------------------
-        EXISTING CATEGORY + ADD ITEM MODALS
-      --------------------------------------------------------- */}
-
+      {/* CATEGORY + REASSIGN MODALS */}
       <AddCategoryModal />
       <DeleteCategoryModal />
       <ReassignModal />
@@ -1029,8 +1117,6 @@ const requestDeleteCategory = (cat) => {
                 <option>Bottoms</option>
                 <option>Shoes</option>
                 <option>Accessories</option>
-
-                {/* Custom Categories */}
                 {customCategories.map((cat) => (
                   <option key={cat.id} value={cat.name}>
                     {cat.name}
