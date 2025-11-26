@@ -12,7 +12,6 @@ export default function Account() {
   const [editMode, setEditMode] = useState(false);
   const { currentUser } = useAuth();
 
-  // This will hold the *latest* values from AccountInfo
   const [profileData, setProfileData] = useState({
     name: "",
     location: "",
@@ -37,36 +36,42 @@ export default function Account() {
   };
 
   return (
-    <div className="account-page p-3 pb-5">
-      {/* Header with name + email */}
-      <ProfileHeader
-        editMode={editMode}
-        setEditMode={setEditMode}
-      />
+    <div className="account-page">
 
-      {/* Account info fields */}
-      <AccountInfo
-        editMode={editMode}
-        user={currentUser}
-        setProfileData={setProfileData}
-        profileData={profileData}
-      />
+      {/* NEW WRAPPER TO FORCE VERTICAL LAYOUT */}
+      <div className="account-wrapper">
 
-      {/* Save button appears only in edit mode */}
-      {editMode && (
-        <ListGroup className="settings-list p-3">
-          <ListGroup.Item
-            action
-            className="save-list-item"
-            onClick={handleSave}
-          >
-            Save Changes
-          </ListGroup.Item>
-        </ListGroup>
-      )}
+        {/* Profile section */}
+        <ProfileHeader
+          editMode={editMode}
+          setEditMode={setEditMode}
+        />
 
+        {/* Info form */}
+        <AccountInfo
+          editMode={editMode}
+          user={currentUser}
+          setProfileData={setProfileData}
+          profileData={profileData}
+        />
 
-      <SettingsList />
+        {/* Save button */}
+        {editMode && (
+          <ListGroup className="settings-list p-3">
+            <ListGroup.Item
+              action
+              className="save-list-item"
+              onClick={handleSave}
+            >
+              Save Changes
+            </ListGroup.Item>
+          </ListGroup>
+        )}
+
+        {/* Log Out */}
+        <SettingsList />
+
+      </div>
     </div>
   );
 }

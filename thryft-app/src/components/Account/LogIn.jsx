@@ -80,17 +80,13 @@ export default function LogIn() {
   };
 
   return (
-    <div className="login-page d-flex flex-column align-items-center justify-content-center vh-100">
-      <div className="account-box p-4 shadow rounded text-center">
-
-        <h2 className="mb-4">
-          {isSignUp ? "Create an Account" : "Sign in to Thryft"}
-        </h2>
-
-        {/* Email / Password Form */}
-        <form onSubmit={handleSubmit} className="w-100" style={{ maxWidth: "320px" }}>
-
-          {/* NAME FIELD (Sign up only) */}
+    <div className="login-page">
+  
+      <div className="account-box text-center">
+        <h2>{isSignUp ? "Create an Account" : "Sign in to Thryft"}</h2>
+  
+        <form onSubmit={handleSubmit} className="w-100 mx-auto" style={{ maxWidth: "320px" }}>
+  
           {isSignUp && (
             <Form.Group className="mb-3 text-start">
               <Form.Label>Name</Form.Label>
@@ -104,7 +100,7 @@ export default function LogIn() {
               />
             </Form.Group>
           )}
-
+  
           <div className="form-group mb-3 text-start">
             <label>Email</label>
             <input
@@ -116,7 +112,7 @@ export default function LogIn() {
               required
             />
           </div>
-
+  
           <div className="form-group mb-3 text-start">
             <label>Password</label>
             <input
@@ -128,8 +124,7 @@ export default function LogIn() {
               required
             />
           </div>
-
-          {/* CONFIRM PASSWORD (Sign up only) */}
+  
           {isSignUp && (
             <div className="form-group mb-3 text-start">
               <label>Confirm Password</label>
@@ -143,23 +138,21 @@ export default function LogIn() {
               />
             </div>
           )}
-
-          <button type="submit" className="btn btn-primary w-100 mb-3">
+  
+          <button type="submit" className="submit-btn">
             {isSignUp ? "Sign Up" : "Log In"}
           </button>
         </form>
-
-        <div className="divider my-3">or</div>
-
-        {/* GOOGLE LOGIN BUTTON */}
+  
+        <div className="divider my-4">or</div>
+  
         <div className="google-login-wrapper">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={() => console.log("Google Login Failed")}
           />
         </div>
-
-        {/* SWITCH Login / Sign up */}
+  
         <p className="mt-4">
           {isSignUp ? (
             <>
@@ -180,4 +173,5 @@ export default function LogIn() {
       </div>
     </div>
   );
+  
 }

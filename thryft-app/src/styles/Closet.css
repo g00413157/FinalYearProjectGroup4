@@ -1,235 +1,290 @@
-/* =========================================
-   GENERAL PAGE LAYOUT
-========================================= */
+:root {
+  --thryft-green: #618b4a;
+  --closet-bg: #f9f5f1;
+  --closet-paper: #f8f3ef;
+  --closet-ink: #222222;
+}
+
+/* -----------------------------
+   PAGE WRAPPER + PAPER GRAIN
+----------------------------- */
+html,
+body {
+  background-color: var(--closet-bg) !important;
+}
+
 
 .closet-page {
-  padding-bottom: 100px; /* so no overlap with bottom buttons */
-}
-
-/* =========================================
-   CATEGORY TITLES + SECTION SPACING
-========================================= */
-
-.category-section {
-  margin-bottom: 45px; /* more breathing room */
-}
-
-.category-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 14px; /* increased space between title & cards */
-  margin-left: 5px;
-  color: #333;
-}
-
-
-/* APP BAR / HEADER */
-.closet-appbar {
-  width: 100%;
-  padding: 18px 22px;
-  background: white;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  position: sticky;  /* sticks to top when scrolling */
-  top: 0;
-  z-index: 50;
-}
-
-.closet-appbar-title {
-  font-size: 26px;
-  color: #333;
-  margin: 0;
-  text-align: center;
-}
-
-/* Divider line between sections */
-.divider-line {
-  height: 1px;
-  background: #ddd;
-  margin: 25px 0;
-}
-
-/* =========================================
-   DRAGGABLE HORIZONTAL SCROLL
-========================================= */
-
-.scroll-container {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 12px;
-  padding-bottom: 10px;
-  cursor: grab;
-  padding-top: 2px;
-  padding-bottom: 14px;
-
-  -webkit-overflow-scrolling: touch;   /* iOS momentum scrolling */
-  scroll-behavior: smooth;             /* smooth feel */
-}
-
-
-
-.scroll-container.active {
-  cursor: grabbing;
-}
-
-.scroll-container::-webkit-scrollbar {
-  display: none;
-}
-
-/* =========================================
-   CLOSET ITEM CARDS
-========================================= */
-
-.closet-card {
-  width: 160px;
-  min-width: 160px;
-  flex: 0 0 auto;     /* THIS FIXES THE SCROLLING */
-  background: #F7C548;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  min-height: 100vh;
+  background: var(--closet-bg);
+  padding-bottom: 7rem;
   position: relative;
-  overflow: hidden;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* -----------------------------
+   SECTION HEADERS
+----------------------------- */
+
+.section-divider {
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 1.2rem;
+  margin-bottom: 0.4rem;
+  position: relative;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 38%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.section-divider::before {
+  left: 0;
+}
+
+.section-divider::after {
+  right: 0;
+}
+
+/* -----------------------------
+   TITLE + SUBTITLE
+----------------------------- */
+
+.closet-title {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 1.35rem;
+}
+
+.closet-subtitle {
+  font-size: 0.9rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+/* -----------------------------
+   BRAND BUTTON
+----------------------------- */
+
+.bg-thryftGreen {
+  background-color: var(--thryft-green) !important;
+}
+
+.closet-build-btn {
+  border-radius: 999px !important;
+  padding-inline: 1.4rem !important;
+  padding-block: 0.45rem !important;
+  font-size: 0.9rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
   border: none;
 }
 
-
-.closet-card-img {
-  width: 100%;
-  height: 180px;        /* consistent size */
-  object-fit: cover;    /* prevents stretching */
-  border-radius: 12px 12px 0 0;
+.closet-build-btn:hover {
+  transform: translateY(-1px) scale(1.03);
 }
 
-.closet-card .card-body {
-  padding: 10px;
+/* -----------------------------
+   CATEGORY PILLS
+----------------------------- */
+
+.category-pill {
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+  background: #e5e7eb;
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+    background-color 0.15s ease, color 0.15s ease;
+  margin-top: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.category-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.active-category-glow {
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+  background-color: var(--thryft-green) !important;
+  color: white !important;
+}
+
+/* -----------------------------
+   EDITORIAL CARD BASE
+----------------------------- */
+
+.editorial-card {
+  position: relative;
+  background: var(--closet-paper);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: 0.25s cubic-bezier(0.25, 0.46, 0.45, 1);
+}
+
+/* Parallax hover */
+.editorial-card:hover {
+  transform: translateY(-4px) rotate(0deg) scale(1.015);
+  z-index: 10;
+}
+
+/* -----------------------------
+   POLAROID FRAME (G)
+----------------------------- */
+
+.polaroid {
+  padding: 0.8rem;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+/* subtle tilt: editorial collage feel */
+.polaroid {
+  transform: rotate(-1.2deg);
+}
+
+.polaroid:nth-child(2n) {
+  transform: rotate(1.2deg);
+}
+
+.polaroid:nth-child(3n) {
+  transform: rotate(-0.8deg);
+}
+
+/* Polaroid label */
+.polaroid-label {
+  margin-top: 0.4rem;
+  font-family: "SF Pro Text", sans-serif;
+  font-size: 0.75rem;
   text-align: center;
+  letter-spacing: 0.04em;
+  color: #333;
 }
 
-.closet-card .card-title {
-  font-size: 15px;
-  color: #333;
+/* -----------------------------
+   PAPERCLIP (H)
+----------------------------- */
+
+.editorial-card.polaroid::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  background-image: url("https://i.imgur.com/Z5b2BI3.png");
+  background-size: cover;
+  opacity: 0.8;
+  transform: rotate(6deg);
+  pointer-events: none;
+}
+
+/* -----------------------------
+   IMAGE + ITEM BADGE
+----------------------------- */
+
+.closet-item-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+.closet-item-card span.bg-thryftGreen {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.closet-item-card button.text-xs {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* -----------------------------
+   OUTFIT CARDS
+----------------------------- */
+
+.closet-outfit-card {
+  background: transparent !important;
+}
+
+.closet-outfit-card .rounded-lg {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.closet-outfit-card .rounded-lg img {
+  object-fit: cover;
+}
+
+.outfit-title,
+.closet-outfit-card p.text-center {
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
-/* =========================================
-   DELETE "X" RED CIRCLE BUTTON
-========================================= */
+/* -----------------------------
+   SEARCH INPUT
+----------------------------- */
 
-.delete-x {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
-  background: #e63946; /* red circle */
-  color: white;
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 24px;
-  text-align: center;
-  cursor: pointer;
-  z-index: 20;
-  user-select: none;
+input[type="text"].w-full {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.delete-x:hover {
-  background: #c52834;
+/* -----------------------------
+   FLOATING BUTTONS
+----------------------------- */
+
+button.fixed.bg-thryftGreen {
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
+  font-size: 2rem;
+  line-height: 1;
 }
 
-/* =========================================
-   ADD ITEM BUTTON
-========================================= */
-
-.add-item-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
+/* back-to-top button */
+button.fixed.bg-gray-800 {
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
 }
 
-.add-item-btn {
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 16px;
+/* -----------------------------
+   MODALS
+----------------------------- */
+
+.modal-content {
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* =========================================
-   MODAL – ADD ITEM
-========================================= */
-
-.custom-category-box {
-  margin-bottom: 20px;
+.modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.custom-cat-row input {
-  flex: 1;
+.modal-title {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.9rem;
 }
 
-.custom-cat-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 5px;
+/* -----------------------------
+   SCROLLBAR
+----------------------------- */
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
-
-.category-title {
-  letter-spacing: 0.3px; /* tiny aesthetic touch */
-}
-
-
-/* =========================================
-   EXTRA AESTHETIC TOUCHES
-========================================= */
-
-/* Smooth transitions */
-.closet-card,
-.delete-x {
-  transition: 0.15s ease;
-}
-
-.closet-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-}
-
-
-
-.category-pill {
-  animation: pillPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform-origin: center;
-  will-change: transform, opacity;
-}
-
-
-@keyframes pillPop {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);   /* final locked value */
-    opacity: 1;            /* stays visible */
-  }
-}
-
-/* Base pill styling (animation already applied separately) */
-.category-pill {
-  transform-origin: center;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-/* 🌿 Smooth hover scaling */
-.category-pill:hover {
-  transform: scale(1.06);
-}
-
- 
-
-
-
-

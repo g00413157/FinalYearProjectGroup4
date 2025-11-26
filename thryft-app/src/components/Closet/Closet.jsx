@@ -370,8 +370,8 @@ export default function Closet() {
                   key={iconObj.name}
                   onClick={() => setSelectedLucideIcon(iconObj.name)}
                   className={`border rounded-lg p-2 flex items-center justify-center transition ${selectedLucideIcon === iconObj.name
-                      ? "bg-thryftGreen text-white"
-                      : "bg-gray-100 hover:bg-gray-200"
+                    ? "bg-thryftGreen text-white"
+                    : "bg-gray-100 hover:bg-gray-200"
                     }`}
                 >
                   {iconObj.icon}
@@ -603,48 +603,48 @@ export default function Closet() {
   );
 
   // ---------------------------------------------------------
-// ADD ITEM TO FIRESTORE
-// ---------------------------------------------------------
-const handleAddItem = async () => {
-  if (!newItem.name || !newItem.image) return;
+  // ADD ITEM TO FIRESTORE
+  // ---------------------------------------------------------
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.image) return;
 
-  const imgRef = ref(
-    storage,
-    `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
-  );
+    const imgRef = ref(
+      storage,
+      `users/${currentUser.uid}/closet/${Date.now()}_${newItem.image.name}`
+    );
 
-  await uploadBytes(imgRef, newItem.image);
-  const url = await getDownloadURL(imgRef);
+    await uploadBytes(imgRef, newItem.image);
+    const url = await getDownloadURL(imgRef);
 
-  await addDoc(collection(db, "users", currentUser.uid, "closet"), {
-    name: newItem.name,
-    category: newItem.category,
-    image: url,
-  });
+    await addDoc(collection(db, "users", currentUser.uid, "closet"), {
+      name: newItem.name,
+      category: newItem.category,
+      image: url,
+    });
 
-  setNewItem({ name: "", category: "Tops", image: null });
-  setShowAddItemModal(false);
-};
-
-
-// ---------------------------------------------------------
-// DELETE ITEM
-// ---------------------------------------------------------
-const handleDeleteItem = async (item) => {
-  await deleteDoc(
-    doc(db, "users", currentUser.uid, "closet", item.id)
-  );
-  await deleteObject(ref(storage, item.image));
-};
+    setNewItem({ name: "", category: "Tops", image: null });
+    setShowAddItemModal(false);
+  };
 
 
-// ---------------------------------------------------------
-// REQUEST DELETE CATEGORY (step 1)
-// ---------------------------------------------------------
-const requestDeleteCategory = (cat) => {
-  setCategoryToDelete(cat);
-  setShowDeleteCategoryModal(true);
-};
+  // ---------------------------------------------------------
+  // DELETE ITEM
+  // ---------------------------------------------------------
+  const handleDeleteItem = async (item) => {
+    await deleteDoc(
+      doc(db, "users", currentUser.uid, "closet", item.id)
+    );
+    await deleteObject(ref(storage, item.image));
+  };
+
+
+  // ---------------------------------------------------------
+  // REQUEST DELETE CATEGORY (step 1)
+  // ---------------------------------------------------------
+  const requestDeleteCategory = (cat) => {
+    setCategoryToDelete(cat);
+    setShowDeleteCategoryModal(true);
+  };
 
 
   // ---------------------------------------------------------
@@ -654,20 +654,25 @@ const requestDeleteCategory = (cat) => {
   return (
     <>
       {/* MAIN CLOSET UI */}
-      <div className="pb-32">
+      <div className="closet-page pb-32">
 
         {/* TITLE */}
-        <h1 className="text-3xl font-bold px-4 pt-6 text-gray-900 mb-4">
+        <h1 className="closet-title text-3xl font-bold px-4 pt-6 text-gray-900 mb-2">
           My Closet
         </h1>
+        <p className="closet-subtitle px-4 mb-4">
+          Curate your wardrobe like a magazine spread.
+        </p>
+
 
         {/* BUILD OUTFIT BUTTON */}
         <button
           onClick={() => navigate("/outfits")}
-          className="ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
+          className="closet-build-btn ml-4 px-4 py-2 bg-thryftGreen text-white rounded-lg shadow hover:scale-105 transition"
         >
           Build an Outfit
         </button>
+
 
         {/* SEARCH BAR (hidden in Saved Outfits tab) */}
         {!showingOutfits && (
@@ -683,6 +688,8 @@ const requestDeleteCategory = (cat) => {
         )}
 
         {/* CATEGORY PILLS */}
+        <div className="section-divider">Categories</div>
+
         <div className="flex gap-3 overflow-x-auto px-4 py-4 scrollbar-hide">
           {categories.map((cat) => renderCategoryPill(cat))}
 
@@ -734,6 +741,8 @@ const requestDeleteCategory = (cat) => {
             </div>
 
             {/* OUTFIT GRID */}
+            <div className="section-divider">Saved Looks</div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
               {filteredOutfits.map((outfit) => (
                 <motion.div
@@ -743,8 +752,9 @@ const requestDeleteCategory = (cat) => {
                     setSelectedOutfit(outfit);
                     setRenameValue(outfit.name || "");
                   }}
-                  className="bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
+                  className="closet-outfit-card editorial-card bg-white rounded-xl shadow-md p-2 cursor-pointer hover:scale-[1.02] transition"
                 >
+
                   <div className="rounded-lg overflow-hidden h-[180px] grid grid-rows-2 grid-cols-2 gap-1">
                     <img
                       src={outfit.previewItems[0]?.image}
@@ -794,41 +804,42 @@ const requestDeleteCategory = (cat) => {
         {/* ===============================
           CLOSET ITEMS SECTION
         =============================== */}
+        <div className="section-divider">Your Wardrobe</div>
+
         {!showingOutfits && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-4">
             {filteredItems.map((item) => (
               <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-xl shadow-md p-2 flex flex-col gap-2 h-[260px] justify-between"
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="closet-item-card editorial-card polaroid"
+            >
+              <img
+                src={item.image}
+                onClick={() => setSelectedItem(item)}
+                className="cursor-pointer w-full h-[150px] object-cover rounded-lg transition-transform duration-300 md:hover:scale-110"
+              />
+            
+              <div className="flex justify-between items-center mt-2">
+                <div className="polaroid-label">{item.name}</div>
+            
+                <span className="text-xs bg-thryftGreen text-white px-2 py-1 rounded-full">
+                  {item.category}
+                </span>
+              </div>
+            
+              <button
+                type="button"
+                onClick={() => handleDeleteItem(item)}
+                className="text-xs text-red-500 mt-1"
               >
-                <img
-                  src={item.image}
-                  onClick={() => setSelectedItem(item)}
-                  className="cursor-pointer w-full h-[150px] object-cover rounded-lg transition-transform duration-300 md:hover:scale-110"
-                />
-
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-gray-900 truncate">
-                    {item.name}
-                  </p>
-
-                  <span className="text-xs bg-thryftGreen text-white px-2 py-1 rounded-full">
-                    {item.category}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteItem(item)}
-                  className="text-xs text-red-500 mt-1"
-                >
-                  Delete
-                </button>
-              </motion.div>
+                Delete
+              </button>
+            </motion.div>
+            
             ))}
           </div>
         )}

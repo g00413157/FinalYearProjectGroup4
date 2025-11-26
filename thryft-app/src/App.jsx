@@ -6,7 +6,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import NavigationBar from './components/NavigationBar';
-import Home from './components/Home';
+import Home from './components/Home/Home';
 import Shop from './components/Shop';
 import Game from './components/Game/Game';
 import Closet from './components/Closet/Closet';
